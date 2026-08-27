@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "opencode-plugins",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "check": "bun run --filter '*' check"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@opentui/solid": "^0.5.9",
+    "solid-js": "^1.9.15",
+    "typescript": "^5"
+  }
+}
