@@ -28,9 +28,10 @@ function makeDeps(directory: string): CommandDeps & { reports: string[] } {
 
 describe("parseModelRef", () => {
   test("parses provider/model", () => {
-    const ref = Effect.runSync(parseModelRef("anthropic/claude-sonnet-4-5"));
+    const ref = Effect.runSync(parseModelRef("anthropic/claude-sonnet-4-5#high"));
     expect(String(ref?.providerID)).toBe("anthropic");
     expect(String(ref?.id)).toBe("claude-sonnet-4-5");
+    expect(String(ref?.variant)).toBe("high");
   });
 
   test("returns undefined without a model", () => {

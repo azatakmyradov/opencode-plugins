@@ -1,11 +1,12 @@
 import { Effect } from "effect";
-import { Plugin } from "@opencode-ai/plugin/effect";
+import { Model, Plugin } from "@opencode-ai/plugin/effect";
 import type { Session } from "@opencode-ai/schema/session";
 import { applyGitEditorEnv, BLOCK_REASON, shouldBlockNoVerify } from "./interceptor.ts";
 import { commandSpecs, parseModelRef, type CommandDeps } from "./commands.ts";
 
 export default Plugin.define({
   id: "git",
+  tui: true,
   effect: (ctx) =>
     Effect.gen(function* () {
       const model = yield* Effect.catchCause(
@@ -25,23 +26,32 @@ export default Plugin.define({
             ),
             (session) => session?.location?.directory,
           ),
-        generateText: (input) => ctx.generate.text(input),
+        generateText: ({ prompt, model: requestModel }) => {
+          if (!requestModel) {
+            return ctx.generate.text({ prompt, model: undefined });
+          }
+          const variant = requestModel.variant ? `#${requestModel.variant}` : "";
+          const model = Model.Ref.parse(`${requestModel.providerID}/${requestModel.id}${variant}`);
+          return ctx.generate.text({ prompt, model });
+        },
         report: (sessionID, text) =>
           Effect.asVoid(ctx.session.synthetic({ sessionID: sessionID as Session.ID, text })),
         model,
       };
 
-      const specs = commandSpecs(deps);
-
-      yield* ctx.command.transform((draft) => {
-        for (const spec of specs) {
-          draft.add({
-            name: spec.name,
-            description: spec.description,
-            execute: ({ sessionID, prompt }) => spec.handler(sessionID, prompt.text),
-          });
-        }
-      });
+      // Avoid shadowing the interactive TUI commands unless explicitly enabled.
+      if (ctx.options.headlessCommands === true) {
+        const specs = commandSpecs(deps);
+        yield* ctx.command.transform((draft) => {
+          for (const spec of specs) {
+            draft.add({
+              name: spec.name,
+              description: spec.description,
+              execute: ({ sessionID, prompt }) => spec.handler(sessionID, prompt.text),
+            });
+          }
+        });
+      }
 
       yield* ctx.permission.hook("evaluate", (event) =>
         Effect.sync(() => {

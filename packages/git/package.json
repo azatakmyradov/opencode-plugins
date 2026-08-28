@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./tui": "./src/tui.tsx"
   },
   "scripts": {
     "check": "tsc --noEmit",
@@ -13,5 +14,24 @@
     "@opencode-ai/plugin": "beta",
     "@opencode-ai/schema": "^0.0.0-beta-18414",
     "effect": "4.0.0-rc.111"
+  },
+  "devDependencies": {
+    "@opencode-ai/theme": "0.0.0-beta-18414"
+  },
+  "peerDependencies": {
+    "@opentui/core": ">=0.5.8",
+    "@opentui/solid": ">=0.5.8",
+    "solid-js": ">=1.9.0"
+  },
+  "peerDependenciesMeta": {
+    "@opentui/core": {
+      "optional": true
+    },
+    "@opentui/solid": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    }
   }
 }

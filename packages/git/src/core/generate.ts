@@ -1,11 +1,34 @@
 import { Data, Effect, Schema } from "effect";
-import type { Model } from "@opencode-ai/plugin/effect";
+import { Model } from "@opencode-ai/schema/model";
 
-export type ModelRef = Model.Ref;
+/** A provider/model pair, structural so both the server and TUI can build one. */
+export type ModelRef = {
+  readonly providerID: string;
+  readonly id: string;
+  readonly variant?: string;
+};
+
+export class InvalidModelRefError extends Data.TaggedError("InvalidModelRefError")<{
+  readonly message: string;
+}> {}
+
+export function parseModelRef(
+  model: string | undefined,
+): Effect.Effect<ModelRef | undefined, InvalidModelRefError> {
+  if (!model) return Effect.succeed(undefined);
+  return Effect.try({
+    try: () => Model.Ref.parse(model),
+    catch: () =>
+      new InvalidModelRefError({
+        message: `Invalid plugin option "model": expected "providerID/modelID"`,
+      }),
+  });
+}
 
 export type GenerateText = (input: {
   prompt: string;
   model?: ModelRef;
+  signal?: AbortSignal;
 }) => Effect.Effect<{ text: string }, unknown>;
 
 export type Generated =
@@ -13,7 +36,7 @@ export type Generated =
   | { action: "new-branch"; name: string }
   | { action: "pr"; title: string; body: string; base: string };
 
-export type Action = "commit" | "new-branch" | "pr";
+export type Action = Generated["action"];
 
 /** Any failure while asking the generator for usable content. */
 export class GenerationError extends Data.TaggedError("GenerationError")<{
@@ -95,8 +118,8 @@ const toGenerationError = (error: unknown): GenerationError => {
 };
 
 /** Pull the first JSON object out of a possibly fenced or prosaic reply. */
-export const extractJson = (text: string): Effect.Effect<unknown, GenerationError> =>
-  Effect.suspend(() => {
+export function extractJson(text: string): Effect.Effect<unknown, GenerationError> {
+  return Effect.suspend(() => {
     const stripped = text
       .replace(/^```(?:json)?\s*/m, "")
       .replace(/```\s*$/m, "")
@@ -112,17 +135,18 @@ export const extractJson = (text: string): Effect.Effect<unknown, GenerationErro
       return Effect.fail(new GenerationError({ message: "Generator returned invalid JSON" }));
     }
   });
+}
 
 /**
  * Decode the generator's JSON against the schema for the requested action.
  * Decoding here is the only gate between the model's output and the Git
  * commands that apply it.
  */
-export const validateGenerated = (
+export function validateGenerated(
   action: Action,
   data: unknown,
-): Effect.Effect<Generated, GenerationError> =>
-  Effect.suspend(() => {
+): Effect.Effect<Generated, GenerationError> {
+  return Effect.suspend(() => {
     try {
       if (action === "commit") {
         const { message } = Schema.decodeUnknownSync(generatedSchemas.commit)(data);
@@ -138,18 +162,47 @@ export const validateGenerated = (
       return Effect.fail(toGenerationError(error));
     }
   });
+}
 
-export const generate = (
+export interface GenerateOptions {
+  readonly model?: ModelRef;
+  readonly signal?: AbortSignal;
+}
+
+export function generate(
+  generateText: GenerateText,
+  action: "commit",
+  prompt: string,
+  options?: GenerateOptions,
+): Effect.Effect<Extract<Generated, { action: "commit" }>, GenerationError>;
+export function generate(
+  generateText: GenerateText,
+  action: "new-branch",
+  prompt: string,
+  options?: GenerateOptions,
+): Effect.Effect<Extract<Generated, { action: "new-branch" }>, GenerationError>;
+export function generate(
+  generateText: GenerateText,
+  action: "pr",
+  prompt: string,
+  options?: GenerateOptions,
+): Effect.Effect<Extract<Generated, { action: "pr" }>, GenerationError>;
+export function generate(
   generateText: GenerateText,
   action: Action,
   prompt: string,
-  model?: ModelRef,
-): Effect.Effect<Generated, GenerationError> =>
-  Effect.gen(function* () {
+  options?: GenerateOptions,
+): Effect.Effect<Generated, GenerationError> {
+  return Effect.gen(function* () {
     const result = yield* Effect.catchCause(
-      generateText({ prompt, ...(model ? { model } : {}) }),
+      generateText({
+        prompt,
+        model: options?.model,
+        signal: options?.signal,
+      }),
       () => Effect.fail(new GenerationError({ message: "Generator request failed" })),
     );
     const data = yield* extractJson(result.text);
     return yield* validateGenerated(action, data);
   });
+}

@@ -6,7 +6,7 @@ import {
   generate,
   truncate,
   validateGenerated,
-} from "../src/generate.ts";
+} from "../src/core/generate.ts";
 
 describe("extractJson", () => {
   test("parses plain JSON", () => {
