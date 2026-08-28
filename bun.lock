@@ -11,6 +11,15 @@
         "typescript": "^5",
       },
     },
+    "packages/git": {
+      "name": "opencode-git-plugin",
+      "version": "0.1.0",
+      "dependencies": {
+        "@opencode-ai/plugin": "beta",
+        "@opencode-ai/schema": "^0.0.0-beta-18414",
+        "effect": "4.0.0-rc.111",
+      },
+    },
     "packages/greet": {
       "name": "opencode-greet-plugin",
       "version": "0.1.0",
@@ -313,6 +322,8 @@
     "node-gyp-build-optional-packages": ["node-gyp-build-optional-packages@5.2.2", "", { "dependencies": { "detect-libc": "^2.0.1" }, "bin": { "node-gyp-build-optional-packages": "bin.js", "node-gyp-build-optional-packages-optional": "optional.js", "node-gyp-build-optional-packages-test": "build-test.js" } }, "sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw=="],
 
     "node-releases": ["node-releases@2.0.54", "", {}, "sha512-YHs7BmmcsdAI5Ozuf8JZo6PT0mv2GIWC9vMfvUC3dp65M8hn7Ux8CPL+2oBI7juNuj9d0ndhTcznq2ODBps9cQ=="],
+
+    "opencode-git-plugin": ["opencode-git-plugin@workspace:packages/git"],
 
     "opencode-greet-plugin": ["opencode-greet-plugin@workspace:packages/greet"],
 
