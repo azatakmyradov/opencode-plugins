@@ -20,13 +20,6 @@
         "effect": "4.0.0-rc.111",
       },
     },
-    "packages/greet": {
-      "name": "opencode-greet-plugin",
-      "version": "0.1.0",
-      "dependencies": {
-        "@opencode-ai/plugin": "beta",
-      },
-    },
   },
   "packages": {
     "@ai-sdk/provider": ["@ai-sdk/provider@3.0.8", "", { "dependencies": { "json-schema": "^0.4.0" } }, "sha512-oGMAgGoQdBXbZqNG0Ze56CHjDZ1IDYOwGYxYjO5KLSlz5HiNQ9udIXsPZ61VWaHGZ5XW/jyjmr6t2xz2jGVwbQ=="],
@@ -324,8 +317,6 @@
     "node-releases": ["node-releases@2.0.54", "", {}, "sha512-YHs7BmmcsdAI5Ozuf8JZo6PT0mv2GIWC9vMfvUC3dp65M8hn7Ux8CPL+2oBI7juNuj9d0ndhTcznq2ODBps9cQ=="],
 
     "opencode-git-plugin": ["opencode-git-plugin@workspace:packages/git"],
-
-    "opencode-greet-plugin": ["opencode-greet-plugin@workspace:packages/greet"],
 
     "p-limit": ["p-limit@2.3.0", "", { "dependencies": { "p-try": "^2.0.0" } }, "sha512-//88mFWSJx8lxCzwdAABTJL2MyWB12+eIY7MDL2SqLmAkeKU9qxRvWuSyTjm3FUmpBEMuFfckAIqEaVGUDxb6w=="],
 
