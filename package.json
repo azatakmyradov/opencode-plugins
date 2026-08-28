@@ -1,18 +1,36 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "opencode-plugins",
-  "type": "module",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
+  "type": "module",
   "scripts": {
-    "check": "bun run --filter '*' check"
+    "check": "bun run --filter '*' check",
+    "prepare": "vp config"
   },
   "devDependencies": {
-    "@types/bun": "latest",
     "@opentui/solid": "^0.5.9",
+    "@oxlint/plugins": "1.80.0",
+    "@types/bun": "latest",
     "solid-js": "^1.9.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "overrides": {
+    "vite": "catalog:"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "bun",
+      "version": "1.4.0",
+      "onFail": "download"
+    }
+  },
+  "catalog": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.3.0",
+    "vite-plus": "0.3.0"
   }
 }
