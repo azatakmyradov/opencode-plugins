@@ -1,5 +1,11 @@
 # @azatakmyradov/opencode-save-md-plugin
 
+## 0.1.1
+
+### Patch Changes
+
+- 0313e66: Reject symlink path escapes, type session failures, cancel TUI workflows on unload, and publish TypeScript declarations for all entrypoints.
+
 ## 0.1.0
 
 ### Minor Changes
