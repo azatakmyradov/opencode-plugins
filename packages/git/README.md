@@ -1,23 +1,23 @@
-# opencode-git-plugin
+# @azatakmyradov/opencode-git-plugin
 
 OpenCode V2 plugin that adds `/commit`, `/new-branch`, and `/pr`. An LLM writes the commit messages, branch names, and pull request text. The plugin runs the resulting `git` and `gh` commands and adds git safety hooks.
 
 ## Install
 
-Install the plugin from GitHub:
+Install the plugin from npm:
 
 ```bash
-opencode2 plugin add 'github:azatakmyradov/opencode-plugins#main::path:packages/git'
+opencode2 plugin add @azatakmyradov/opencode-git-plugin
 opencode2 plugin list
 ```
 
-The server entrypoint enables the TUI entrypoint. An install that tracks `main` starts with its cached version and checks GitHub for updates in the background. A downloaded update takes effect the next time the service starts. Restart it now with:
+The server entrypoint enables the TUI entrypoint. An unversioned install starts with its cached version and checks npm for updates in the background. A downloaded update takes effect the next time the service starts. Restart it now with:
 
 ```bash
 opencode2 service restart
 ```
 
-Use a full commit SHA instead of `main` for a reproducible install that does not update.
+Use an exact package version for a reproducible install that does not update.
 
 ## Workflows
 
@@ -48,7 +48,7 @@ Headless commands do not show dialogs. They refuse actions that need an interact
 For local development, run `bun install`. Add `packages/git/src/index.ts` to `opencode.jsonc` and `packages/git/src/tui.tsx` to the global CLI plugin configuration. OpenCode cannot find the package-level `./tui` export when it loads the server source file directly, so you must add both entries.
 
 ```bash
-bun run --filter opencode-git-plugin check
-bun run --filter opencode-git-plugin test
+bun run --filter @azatakmyradov/opencode-git-plugin check
+bun run --filter @azatakmyradov/opencode-git-plugin test
 bun run check
 ```

@@ -1,23 +1,23 @@
-# opencode-recap-plugin
+# @azatakmyradov/opencode-recap-plugin
 
 OpenCode V2 plugin that writes a recap and suggested next step after each root-session run. It places the recap after the run's last message without adding it to the session history or future model context.
 
 ## Install
 
-Install the plugin from GitHub:
+Install the plugin from npm:
 
 ```bash
-opencode2 plugin add 'github:azatakmyradov/opencode-plugins#main::path:packages/recap'
+opencode2 plugin add @azatakmyradov/opencode-recap-plugin
 opencode2 plugin list
 ```
 
-The server entrypoint enables the TUI entrypoint. An install that tracks `main` starts with its cached version and checks GitHub for updates in the background. A downloaded update takes effect the next time the service starts. Restart it now with:
+The server entrypoint enables the TUI entrypoint. An unversioned install starts with its cached version and checks npm for updates in the background. A downloaded update takes effect the next time the service starts. Restart it now with:
 
 ```bash
 opencode2 service restart
 ```
 
-Use a full commit SHA instead of `main` for a reproducible install that does not update.
+Use an exact package version for a reproducible install that does not update.
 
 ## Recaps
 
@@ -48,7 +48,7 @@ The plugin redacts common secret formats and values under keys such as `token`, 
 For local development, run `bun install`. Add `packages/recap/src/index.ts` to `opencode.jsonc` and `packages/recap/src/tui.tsx` to the global CLI plugin configuration. OpenCode cannot find the package-level `./tui` export when it loads the server source file directly, so you must add both entries.
 
 ```bash
-bun run --filter opencode-recap-plugin check
-bun run --filter opencode-recap-plugin test
+bun run --filter @azatakmyradov/opencode-recap-plugin check
+bun run --filter @azatakmyradov/opencode-recap-plugin test
 bun run check
 ```

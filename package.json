@@ -7,7 +7,11 @@
   ],
   "type": "module",
   "scripts": {
+    "build": "bun run --filter '*' build",
     "check": "bun run --filter '*' check",
+    "changeset": "changeset",
+    "release": "changeset publish",
+    "test": "bun run --filter '*' test",
     "prepare": "vp config"
   },
   "dependencies": {
@@ -15,6 +19,7 @@
     "@opencode-ai/plugin": "0.0.0-beta-18414"
   },
   "devDependencies": {
+    "@changesets/cli": "2.29.7",
     "@opentui/solid": "^0.5.9",
     "@oxlint/plugins": "1.80.0",
     "@types/bun": "latest",
@@ -27,13 +32,7 @@
     "@opencode-ai/plugin": "0.0.0-beta-18414",
     "vite": "catalog:"
   },
-  "devEngines": {
-    "packageManager": {
-      "name": "bun",
-      "version": "1.4.0",
-      "onFail": "download"
-    }
-  },
+  "packageManager": "bun@1.4.0",
   "catalog": {
     "vite": "npm:@voidzero-dev/vite-plus-core@0.3.0",
     "vite-plus": "0.3.0"

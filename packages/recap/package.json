@@ -1,13 +1,37 @@
 {
-  "name": "opencode-recap-plugin",
+  "name": "@azatakmyradov/opencode-recap-plugin",
   "version": "0.1.0",
+  "description": "Run recaps and suggested next steps for the OpenCode V2 TUI",
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "recap",
+    "tui"
+  ],
+  "homepage": "https://github.com/azatakmyradov/opencode-plugins/tree/main/packages/recap",
+  "bugs": "https://github.com/azatakmyradov/opencode-plugins/issues",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/azatakmyradov/opencode-plugins.git",
+    "directory": "packages/recap"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./tui": "./src/tui.tsx"
+    ".": "./dist/index.js",
+    "./tui": "./dist/tui.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
+    "build": "bun ../../scripts/build.ts .",
     "check": "tsc --noEmit",
+    "prepack": "bun run build",
     "test": "vp test run"
   },
   "dependencies": {
