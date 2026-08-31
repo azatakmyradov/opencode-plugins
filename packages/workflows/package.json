@@ -1,6 +1,6 @@
 {
   "name": "@azatakmyradov/opencode-workflows-plugin",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Sandboxed multi-agent workflow runs for OpenCode V2",
   "keywords": [
     "agents",
