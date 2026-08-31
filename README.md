@@ -1,10 +1,11 @@
 # OpenCode plugins
 
-This workspace contains three OpenCode V2 plugins:
+This workspace contains four OpenCode V2 plugins:
 
 - `@azatakmyradov/opencode-git-plugin` provides interactive commit, branch, and pull request workflows, plus git safety hooks.
 - `@azatakmyradov/opencode-mcp-toggle-plugin` stores per-project MCP enablement overrides without editing configuration files.
 - `@azatakmyradov/opencode-recap-plugin` saves a compact recap when an assistant run in the root session finishes.
+- `@azatakmyradov/opencode-save-md-plugin` saves the latest assistant response as Markdown in the server workspace.
 
 ## Install
 
@@ -14,6 +15,7 @@ Install any package from npm:
 opencode2 plugin add @azatakmyradov/opencode-git-plugin
 opencode2 plugin add @azatakmyradov/opencode-mcp-toggle-plugin
 opencode2 plugin add @azatakmyradov/opencode-recap-plugin
+opencode2 plugin add @azatakmyradov/opencode-save-md-plugin
 opencode2 plugin list
 ```
 
@@ -25,7 +27,11 @@ opencode2 service restart
 
 Use an exact package version for a reproducible install that does not update.
 
-To develop from this workspace, run `bun install`. Load each package's `src/index.ts` in `opencode.jsonc` and its `src/tui.tsx` in the global CLI plugin configuration.
+To develop from this workspace, run `bun install`. For packages with root development entrypoints, load the package directory by absolute path in `opencode.jsonc`; OpenCode discovers both `index.ts` and `tui.tsx`. Run a package build first when testing its npm `dist` exports.
+
+## Save Markdown
+
+Use `/save-md design` to save the latest assistant response as `design.md`, or `/save-md design.md` to keep the supplied suffix. The command waits for the session to become idle and writes from the server process, including for remote TUI connections. It excludes reasoning and tool parts, rejects paths outside the current location, and never overwrites an existing file.
 
 ## Recaps
 
@@ -46,7 +52,12 @@ Preferences are stored per user and project ID, survive service restarts, and ap
 ```bash
 bun run --filter @azatakmyradov/opencode-recap-plugin check
 bun run --filter @azatakmyradov/opencode-recap-plugin test
+bun run --filter @azatakmyradov/opencode-save-md-plugin check
+bun run --filter @azatakmyradov/opencode-save-md-plugin test
+bun run --filter @azatakmyradov/opencode-save-md-plugin build
 bun run check
+bun run test
+bun run build
 ```
 
 ## Release
@@ -66,7 +77,9 @@ Bootstrap each package once with an authenticated npm account before enabling tr
 npm publish --workspace @azatakmyradov/opencode-git-plugin
 npm publish --workspace @azatakmyradov/opencode-mcp-toggle-plugin
 npm publish --workspace @azatakmyradov/opencode-recap-plugin
+npm publish --workspace @azatakmyradov/opencode-save-md-plugin
 npm trust github @azatakmyradov/opencode-git-plugin --file release.yml --repo azatakmyradov/opencode-plugins --allow-publish
 npm trust github @azatakmyradov/opencode-mcp-toggle-plugin --file release.yml --repo azatakmyradov/opencode-plugins --allow-publish
 npm trust github @azatakmyradov/opencode-recap-plugin --file release.yml --repo azatakmyradov/opencode-plugins --allow-publish
+npm trust github @azatakmyradov/opencode-save-md-plugin --file release.yml --repo azatakmyradov/opencode-plugins --allow-publish
 ```

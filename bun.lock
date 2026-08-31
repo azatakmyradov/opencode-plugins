@@ -21,7 +21,7 @@
     },
     "packages/git": {
       "name": "@azatakmyradov/opencode-git-plugin",
-      "version": "0.1.0",
+      "version": "0.1.2",
       "dependencies": {
         "@opencode-ai/plugin": "0.0.0-beta-18721",
         "@opencode-ai/schema": "0.0.0-beta-18721",
@@ -44,7 +44,7 @@
     },
     "packages/mcp-toggle": {
       "name": "@azatakmyradov/opencode-mcp-toggle-plugin",
-      "version": "0.0.0",
+      "version": "0.1.1",
       "dependencies": {
         "@opencode-ai/plugin": "0.0.0-beta-18721",
         "effect": "4.0.0-rc.112",
@@ -63,11 +63,32 @@
     },
     "packages/recap": {
       "name": "@azatakmyradov/opencode-recap-plugin",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@opencode-ai/client": "0.0.0-beta-18721",
         "@opencode-ai/plugin": "0.0.0-beta-18721",
         "effect": "4.0.0-rc.112",
+      },
+      "peerDependencies": {
+        "@opentui/core": ">=0.5.9",
+        "@opentui/solid": ">=0.5.9",
+        "solid-js": ">=1.9.0",
+      },
+      "optionalPeers": [
+        "@opentui/core",
+        "@opentui/solid",
+        "solid-js",
+      ],
+    },
+    "packages/save-md": {
+      "name": "@azatakmyradov/opencode-save-md-plugin",
+      "version": "0.0.0",
+      "dependencies": {
+        "@opencode-ai/client": "0.0.0-beta-18721",
+        "@opencode-ai/plugin": "0.0.0-beta-18721",
+        "@opencode-ai/schema": "0.0.0-beta-18721",
+        "effect": "4.0.0-rc.112",
+        "zod": "4.1.8",
       },
       "peerDependencies": {
         "@opentui/core": ">=0.5.9",
@@ -105,6 +126,8 @@
     "@azatakmyradov/opencode-mcp-toggle-plugin": ["@azatakmyradov/opencode-mcp-toggle-plugin@workspace:packages/mcp-toggle"],
 
     "@azatakmyradov/opencode-recap-plugin": ["@azatakmyradov/opencode-recap-plugin@workspace:packages/recap"],
+
+    "@azatakmyradov/opencode-save-md-plugin": ["@azatakmyradov/opencode-save-md-plugin@workspace:packages/save-md"],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],
 
