@@ -1,3 +1,4 @@
+import { Cause, Effect, MutableRef, Option, Ref, Schema, Semaphore } from "effect";
 import type { McpOverrideValue, McpServerState } from "./rpc.ts";
 
 export type OverrideMap = Record<string, McpOverrideValue>;
@@ -14,119 +15,166 @@ export interface RuntimeState {
 interface ToggleDependencies {
   projectID: string;
   storage: {
-    get(key: string): Promise<unknown>;
-    set(key: string, value: OverrideMap): Promise<void>;
+    get(key: string): Effect.Effect<unknown, unknown>;
+    set(key: string, value: OverrideMap): Effect.Effect<void, unknown>;
   };
-  runtime(): Promise<ReadonlyMap<string, RuntimeState>>;
-  reload(): Promise<void>;
+  runtime(): Effect.Effect<ReadonlyMap<string, RuntimeState>, unknown>;
+  reload(): Effect.Effect<void, unknown>;
 }
 
-export class ToggleNotFoundError extends Error {
-  constructor(readonly server: string) {
-    super(`MCP server not found: ${server}`);
-  }
+type ToggleOperation = "list" | "storage" | "reload";
+
+export class ToggleNotFoundError extends Schema.TaggedError<ToggleNotFoundError>()(
+  "ToggleNotFoundError",
+  {
+    server: Schema.String,
+    message: Schema.String,
+  },
+) {}
+
+export class ToggleOperationError extends Schema.TaggedError<ToggleOperationError>()(
+  "ToggleOperationError",
+  {
+    operation: Schema.Literals(["list", "storage", "reload"]),
+    message: Schema.String,
+    cause: Schema.Defect(),
+  },
+) {}
+
+interface ToggleController {
+  transform(entries: readonly (readonly [string, ToggleConfig])[]): void;
+  list(): Effect.Effect<McpServerState[], ToggleOperationError>;
+  set(
+    name: string,
+    enabled: boolean,
+  ): Effect.Effect<McpServerState, ToggleNotFoundError | ToggleOperationError>;
+  reset(name: string): Effect.Effect<McpServerState, ToggleNotFoundError | ToggleOperationError>;
 }
 
-export class ToggleOperationError extends Error {
-  constructor(
-    readonly operation: "list" | "storage" | "reload",
-    cause: unknown,
-  ) {
-    super(`MCP ${operation} failed: ${cause instanceof Error ? cause.message : String(cause)}`, {
-      cause,
-    });
-  }
+interface ControllerState {
+  readonly overrides: OverrideMap;
+  readonly configured: ReadonlyMap<string, boolean>;
 }
+
+const StoredOverrides = Schema.Record(Schema.String, Schema.Unknown);
+const OverrideValue = Schema.Literals(["enabled", "disabled"]);
+const decodeStoredOverrides = Schema.decodeUnknownOption(StoredOverrides);
+const isOverrideValue = Schema.is(OverrideValue);
 
 export function storageKey(projectID: string): string {
   return `projects/${projectID}/overrides`;
 }
 
 export function parseOverrides(value: unknown): OverrideMap {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const stored = decodeStoredOverrides(value);
+  if (Option.isNone(stored)) return {};
 
   const overrides: OverrideMap = {};
-  for (const [name, state] of Object.entries(value)) {
-    if (state === "enabled" || state === "disabled") overrides[name] = state;
+  for (const [name, state] of Object.entries(stored.value)) {
+    if (isOverrideValue(state)) overrides[name] = state;
   }
   return overrides;
 }
 
-export async function createToggleController(dependencies: ToggleDependencies) {
+function operationFailure<A, R>(
+  operation: ToggleOperation,
+  effect: Effect.Effect<A, unknown, R>,
+): Effect.Effect<A, ToggleOperationError, R> {
+  return Effect.catchCause(effect, (cause) => {
+    if (Cause.hasInterruptsOnly(cause)) return Effect.interrupt;
+
+    const error = Cause.squash(cause);
+    return Effect.fail(
+      new ToggleOperationError({
+        operation,
+        cause: error,
+        message: `MCP ${operation} failed: ${error instanceof Error ? error.message : String(error)}`,
+      }),
+    );
+  });
+}
+
+export const createToggleController = Effect.fn("createToggleController")(function* (
+  dependencies: ToggleDependencies,
+): Effect.fn.Return<ToggleController, ToggleOperationError> {
   const key = storageKey(dependencies.projectID);
-  let overrides = parseOverrides(await dependencies.storage.get(key));
-  let configured = new Map<string, boolean>();
-  let mutations = Promise.resolve();
+  const stored = yield* operationFailure("storage", dependencies.storage.get(key));
+  const state = yield* Ref.make<ControllerState>({
+    overrides: parseOverrides(stored),
+    configured: new Map(),
+  });
+  const mutations = yield* Semaphore.make(1);
 
   function transform(entries: readonly (readonly [string, ToggleConfig])[]): void {
+    const current = Ref.getUnsafe(state);
     const next = new Map<string, boolean>();
     for (const [name, server] of entries) {
       next.set(name, server.disabled !== true);
-      const override = overrides[name];
+      const override = current.overrides[name];
       if (override) server.disabled = override === "disabled";
     }
-    configured = next;
+    // OpenCode transform callbacks are synchronous, so this cannot yield Ref.update.
+    MutableRef.set(state.ref, { ...current, configured: next });
   }
 
-  async function list(): Promise<McpServerState[]> {
-    let runtime: ReadonlyMap<string, RuntimeState>;
-    try {
-      runtime = await dependencies.runtime();
-    } catch (error) {
-      throw new ToggleOperationError("list", error);
-    }
+  const list = Effect.fn("ToggleController.list")(function* () {
+    const runtime = yield* operationFailure("list", dependencies.runtime());
+    const current = yield* Ref.get(state);
 
-    return [...configured]
+    return [...current.configured]
       .map(([name, configuredEnabled]) => {
-        const override = overrides[name] ?? null;
-        const current = runtime.get(name);
+        const override = current.overrides[name] ?? null;
+        const server = runtime.get(name);
         return {
           name,
           configuredEnabled,
           enabled: override ? override === "enabled" : configuredEnabled,
           override,
-          status: current?.status ?? "unknown",
-          error: current?.error ?? null,
+          status: server?.status ?? "unknown",
+          error: server?.error ?? null,
         };
       })
       .sort((left, right) => left.name.localeCompare(right.name));
-  }
+  });
 
-  function serialize<T>(operation: () => Promise<T>): Promise<T> {
-    const result = mutations.then(operation, operation);
-    mutations = result.then(
-      () => undefined,
-      () => undefined,
+  const commitMutation = Effect.fn("ToggleController.commitMutation")(function* (
+    name: string,
+    value: McpOverrideValue | undefined,
+  ): Effect.fn.Return<McpServerState, ToggleNotFoundError | ToggleOperationError> {
+    const current = yield* Ref.get(state);
+    if (!current.configured.has(name)) {
+      return yield* new ToggleNotFoundError({
+        server: name,
+        message: `MCP server not found: ${name}`,
+      });
+    }
+
+    const next = { ...current.overrides };
+    if (value) next[name] = value;
+    else delete next[name];
+
+    yield* operationFailure("storage", dependencies.storage.set(key, next)).pipe(
+      Effect.andThen(Ref.update(state, (current) => ({ ...current, overrides: next }))),
+      Effect.andThen(operationFailure("reload", dependencies.reload())),
+      Effect.uninterruptible,
     );
-    return result;
-  }
 
-  async function mutate(name: string, value: McpOverrideValue | undefined) {
-    return serialize(async () => {
-      if (!configured.has(name)) throw new ToggleNotFoundError(name);
+    const server = (yield* list()).find((item) => item.name === name);
+    if (!server) {
+      return yield* new ToggleNotFoundError({
+        server: name,
+        message: `MCP server not found: ${name}`,
+      });
+    }
+    return server;
+  });
 
-      const next = { ...overrides };
-      if (value) next[name] = value;
-      else delete next[name];
-
-      try {
-        await dependencies.storage.set(key, next);
-      } catch (error) {
-        throw new ToggleOperationError("storage", error);
-      }
-      overrides = next;
-
-      try {
-        await dependencies.reload();
-      } catch (error) {
-        throw new ToggleOperationError("reload", error);
-      }
-
-      const server = (await list()).find((item) => item.name === name);
-      if (!server) throw new ToggleNotFoundError(name);
-      return server;
-    });
-  }
+  const mutate = Effect.fn("ToggleController.mutate")(function* (
+    name: string,
+    value: McpOverrideValue | undefined,
+  ) {
+    return yield* mutations.withPermit(commitMutation(name, value));
+  });
 
   return {
     transform,
@@ -138,4 +186,4 @@ export async function createToggleController(dependencies: ToggleDependencies) {
       return mutate(name, undefined);
     },
   };
-}
+});

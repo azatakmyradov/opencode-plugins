@@ -1,3 +1,4 @@
+import { Cause, Deferred, Effect, Exit, Fiber } from "effect";
 import { describe, expect, it } from "vite-plus/test";
 import {
   createToggleController,
@@ -9,6 +10,10 @@ import {
   type ToggleConfig,
 } from "../src/core.ts";
 
+function run<A, E>(effect: Effect.Effect<A, E>): Promise<A> {
+  return Effect.runPromise(effect);
+}
+
 function memoryStorage(initial: Record<string, unknown> = {}) {
   const values = new Map(Object.entries(initial));
   const writes: Array<{ key: string; value: OverrideMap }> = [];
@@ -16,20 +21,22 @@ function memoryStorage(initial: Record<string, unknown> = {}) {
     values,
     writes,
     storage: {
-      async get(key: string) {
-        return values.get(key);
+      get(key: string) {
+        return Effect.sync(() => values.get(key));
       },
-      async set(key: string, value: OverrideMap) {
-        const saved = { ...value };
-        writes.push({ key, value: saved });
-        values.set(key, saved);
+      set(key: string, value: OverrideMap) {
+        return Effect.sync(() => {
+          const saved = { ...value };
+          writes.push({ key, value: saved });
+          values.set(key, saved);
+        });
       },
     },
   };
 }
 
 function runtime(...names: string[]) {
-  return new Map(names.map((name) => [name, { status: "connected", error: null }]));
+  return Effect.succeed(new Map(names.map((name) => [name, { status: "connected", error: null }])));
 }
 
 describe("override state", () => {
@@ -44,15 +51,17 @@ describe("override state", () => {
   it("inherits defaults when persisted state is corrupt", async () => {
     const key = storageKey("project");
     const memory = memoryStorage({ [key]: { docs: "invalid" } });
-    const controller = await createToggleController({
-      projectID: "project",
-      storage: memory.storage,
-      runtime: async () => runtime("docs"),
-      reload: async () => {},
-    });
+    const controller = await run(
+      createToggleController({
+        projectID: "project",
+        storage: memory.storage,
+        runtime: () => runtime("docs"),
+        reload: () => Effect.void,
+      }),
+    );
     controller.transform([["docs", { disabled: true }]]);
 
-    expect(await controller.list()).toEqual([
+    expect(await run(controller.list())).toEqual([
       expect.objectContaining({ name: "docs", enabled: false, override: null }),
     ]);
   });
@@ -66,12 +75,14 @@ describe("override state", () => {
 describe("toggle controller", () => {
   it("leaves inherited configuration unchanged", async () => {
     const memory = memoryStorage();
-    const controller = await createToggleController({
-      projectID: "project",
-      storage: memory.storage,
-      runtime: async () => runtime("local", "remote"),
-      reload: async () => {},
-    });
+    const controller = await run(
+      createToggleController({
+        projectID: "project",
+        storage: memory.storage,
+        runtime: () => runtime("local", "remote"),
+        reload: () => Effect.void,
+      }),
+    );
     const local: ToggleConfig & { type: string; command: string[]; timeout: number } = {
       type: "local",
       command: ["server"],
@@ -86,7 +97,7 @@ describe("toggle controller", () => {
 
     expect(local).toEqual({ type: "local", command: ["server"], timeout: 30 });
     expect(remote).toEqual({ type: "remote", url: "https://example.com", disabled: true });
-    expect(await controller.list()).toEqual([
+    expect(await run(controller.list())).toEqual([
       expect.objectContaining({ name: "local", configuredEnabled: true, enabled: true }),
       expect.objectContaining({ name: "remote", configuredEnabled: false, enabled: false }),
     ]);
@@ -95,12 +106,14 @@ describe("toggle controller", () => {
   it("enables and disables local and remote servers without changing other fields", async () => {
     const memory = memoryStorage();
     let replay = () => {};
-    const controller = await createToggleController({
-      projectID: "project",
-      storage: memory.storage,
-      runtime: async () => runtime("local", "remote"),
-      reload: async () => replay(),
-    });
+    const controller = await run(
+      createToggleController({
+        projectID: "project",
+        storage: memory.storage,
+        runtime: () => runtime("local", "remote"),
+        reload: () => Effect.sync(replay),
+      }),
+    );
     let local: ToggleConfig & { type: string; command: string[] };
     let remote: ToggleConfig & { type: string; url: string; headers: Record<string, string> };
     replay = () => {
@@ -118,11 +131,11 @@ describe("toggle controller", () => {
     };
     replay();
 
-    await controller.set("local", false);
+    await run(controller.set("local", false));
     expect(local!.disabled).toBe(true);
     expect(local!.command).toEqual(["server"]);
 
-    await controller.set("remote", true);
+    await run(controller.set("remote", true));
     expect(remote!.disabled).toBe(false);
     expect(remote!.url).toBe("https://example.com");
     expect(remote!.headers).toEqual({ Authorization: "secret" });
@@ -131,12 +144,14 @@ describe("toggle controller", () => {
   it("resets an override to its configured default", async () => {
     const memory = memoryStorage();
     let replay = () => {};
-    const controller = await createToggleController({
-      projectID: "project",
-      storage: memory.storage,
-      runtime: async () => runtime("docs"),
-      reload: async () => replay(),
-    });
+    const controller = await run(
+      createToggleController({
+        projectID: "project",
+        storage: memory.storage,
+        runtime: () => runtime("docs"),
+        reload: () => Effect.sync(replay),
+      }),
+    );
     let server: ToggleConfig = {};
     replay = () => {
       server = { disabled: true };
@@ -144,9 +159,9 @@ describe("toggle controller", () => {
     };
     replay();
 
-    expect((await controller.set("docs", true)).enabled).toBe(true);
+    expect((await run(controller.set("docs", true))).enabled).toBe(true);
     expect(server.disabled).toBe(false);
-    const reset = await controller.reset("docs");
+    const reset = await run(controller.reset("docs"));
 
     expect(reset).toEqual(expect.objectContaining({ enabled: false, override: null }));
     expect(server.disabled).toBe(true);
@@ -155,23 +170,27 @@ describe("toggle controller", () => {
 
   it("isolates preferences by project", async () => {
     const memory = memoryStorage();
-    const projectA = await createToggleController({
-      projectID: "a",
-      storage: memory.storage,
-      runtime: async () => runtime("docs"),
-      reload: async () => {},
-    });
-    const projectB = await createToggleController({
-      projectID: "b",
-      storage: memory.storage,
-      runtime: async () => runtime("docs"),
-      reload: async () => {},
-    });
+    const projectA = await run(
+      createToggleController({
+        projectID: "a",
+        storage: memory.storage,
+        runtime: () => runtime("docs"),
+        reload: () => Effect.void,
+      }),
+    );
+    const projectB = await run(
+      createToggleController({
+        projectID: "b",
+        storage: memory.storage,
+        runtime: () => runtime("docs"),
+        reload: () => Effect.void,
+      }),
+    );
     projectA.transform([["docs", {}]]);
     projectB.transform([["docs", {}]]);
 
-    await projectA.set("docs", false);
-    await projectB.set("docs", true);
+    await run(projectA.set("docs", false));
+    await run(projectB.set("docs", true));
 
     expect(memory.values.get(storageKey("a"))).toEqual({ docs: "disabled" });
     expect(memory.values.get(storageKey("b"))).toEqual({ docs: "enabled" });
@@ -180,43 +199,62 @@ describe("toggle controller", () => {
   it("keeps stale names and rejects missing configured servers", async () => {
     const key = storageKey("project");
     const memory = memoryStorage({ [key]: { stale: "disabled" } });
-    const controller = await createToggleController({
-      projectID: "project",
-      storage: memory.storage,
-      runtime: async () => runtime("docs"),
-      reload: async () => {},
-    });
+    const controller = await run(
+      createToggleController({
+        projectID: "project",
+        storage: memory.storage,
+        runtime: () => runtime("docs"),
+        reload: () => Effect.void,
+      }),
+    );
     controller.transform([["docs", {}]]);
 
-    await controller.set("docs", false);
+    await run(controller.set("docs", false));
 
     expect(memory.values.get(key)).toEqual({ stale: "disabled", docs: "disabled" });
-    await expect(controller.reset("stale")).rejects.toBeInstanceOf(ToggleNotFoundError);
-    expect((await controller.list()).map((server) => server.name)).toEqual(["docs"]);
+    await expect(run(controller.reset("stale"))).rejects.toBeInstanceOf(ToggleNotFoundError);
+    expect((await run(controller.list())).map((server) => server.name)).toEqual(["docs"]);
   });
 
   it("serializes concurrent mutations without losing updates", async () => {
     const memory = memoryStorage();
-    const controller = await createToggleController({
-      projectID: "project",
-      storage: {
-        get(key) {
-          return memory.storage.get(key);
+    const firstWrite = Deferred.makeUnsafe<void>();
+    const releaseFirst = Deferred.makeUnsafe<void>();
+    const controller = await run(
+      createToggleController({
+        projectID: "project",
+        storage: {
+          get: memory.storage.get,
+          set(key, value) {
+            const save = memory.storage.set(key, value);
+            if (!value.alpha || value.beta) return save;
+            return Deferred.succeed(firstWrite, undefined).pipe(
+              Effect.andThen(Deferred.await(releaseFirst)),
+              Effect.andThen(save),
+            );
+          },
         },
-        async set(key, value) {
-          await new Promise((resolve) => setTimeout(resolve, value.alpha ? 10 : 0));
-          await memory.storage.set(key, value);
-        },
-      },
-      runtime: async () => runtime("alpha", "beta"),
-      reload: async () => {},
-    });
+        runtime: () => runtime("alpha", "beta"),
+        reload: () => Effect.void,
+      }),
+    );
     controller.transform([
       ["alpha", {}],
       ["beta", {}],
     ]);
 
-    await Promise.all([controller.set("alpha", false), controller.set("beta", false)]);
+    await run(
+      Effect.all(
+        [
+          controller.set("alpha", false),
+          controller.set("beta", false),
+          Deferred.await(firstWrite).pipe(
+            Effect.andThen(Deferred.succeed(releaseFirst, undefined)),
+          ),
+        ],
+        { concurrency: "unbounded" },
+      ),
+    );
 
     expect(memory.writes).toEqual([
       { key: storageKey("project"), value: { alpha: "disabled" } },
@@ -227,29 +265,56 @@ describe("toggle controller", () => {
     ]);
   });
 
-  it("updates memory only after storage succeeds", async () => {
-    let reloads = 0;
-    const controller = await createToggleController({
-      projectID: "project",
-      storage: {
-        async get() {
-          return {};
+  it("releases the mutation permit after a failed write", async () => {
+    const memory = memoryStorage();
+    let fail = true;
+    const controller = await run(
+      createToggleController({
+        projectID: "project",
+        storage: {
+          get: memory.storage.get,
+          set(key, value) {
+            if (fail) {
+              fail = false;
+              return Effect.fail(new Error("disk full"));
+            }
+            return memory.storage.set(key, value);
+          },
         },
-        async set() {
-          throw new Error("disk full");
-        },
-      },
-      runtime: async () => runtime("docs"),
-      reload: async () => {
-        reloads++;
-      },
-    });
+        runtime: () => runtime("docs"),
+        reload: () => Effect.void,
+      }),
+    );
     controller.transform([["docs", {}]]);
 
-    await expect(controller.set("docs", false)).rejects.toMatchObject({
+    await expect(run(controller.set("docs", false))).rejects.toMatchObject({
       operation: "storage",
     } satisfies Partial<ToggleOperationError>);
-    expect((await controller.list())[0]).toEqual(
+    expect((await run(controller.set("docs", true))).enabled).toBe(true);
+  });
+
+  it("updates memory only after storage succeeds", async () => {
+    let reloads = 0;
+    const controller = await run(
+      createToggleController({
+        projectID: "project",
+        storage: {
+          get: () => Effect.succeed({}),
+          set: () => Effect.fail(new Error("disk full")),
+        },
+        runtime: () => runtime("docs"),
+        reload: () =>
+          Effect.sync(() => {
+            reloads++;
+          }),
+      }),
+    );
+    controller.transform([["docs", {}]]);
+
+    await expect(run(controller.set("docs", false))).rejects.toMatchObject({
+      operation: "storage",
+    } satisfies Partial<ToggleOperationError>);
+    expect((await run(controller.list()))[0]).toEqual(
       expect.objectContaining({ enabled: true, override: null }),
     );
     expect(reloads).toBe(0);
@@ -257,22 +322,125 @@ describe("toggle controller", () => {
 
   it("keeps a persisted override when reconciliation fails", async () => {
     const memory = memoryStorage();
-    const controller = await createToggleController({
-      projectID: "project",
-      storage: memory.storage,
-      runtime: async () => runtime("docs"),
-      reload: async () => {
-        throw new Error("service unavailable");
-      },
-    });
+    const controller = await run(
+      createToggleController({
+        projectID: "project",
+        storage: memory.storage,
+        runtime: () => runtime("docs"),
+        reload: () => Effect.fail(new Error("service unavailable")),
+      }),
+    );
     controller.transform([["docs", {}]]);
 
-    await expect(controller.set("docs", false)).rejects.toMatchObject({
+    await expect(run(controller.set("docs", false))).rejects.toMatchObject({
       operation: "reload",
     } satisfies Partial<ToggleOperationError>);
     expect(memory.values.get(storageKey("project"))).toEqual({ docs: "disabled" });
-    expect((await controller.list())[0]).toEqual(
+    expect((await run(controller.list()))[0]).toEqual(
       expect.objectContaining({ enabled: false, override: "disabled" }),
     );
+  });
+
+  it("commits through reload before honoring interruption", async () => {
+    const memory = memoryStorage();
+    const reloadStarted = Deferred.makeUnsafe<void>();
+    const releaseReload = Deferred.makeUnsafe<void>();
+    let firstReload = true;
+    let reloadCompleted = false;
+    let replay = () => {};
+    const controller = await run(
+      createToggleController({
+        projectID: "project",
+        storage: memory.storage,
+        runtime: () => runtime("docs"),
+        reload: () => {
+          if (!firstReload) return Effect.sync(replay);
+          firstReload = false;
+          return Deferred.succeed(reloadStarted, undefined).pipe(
+            Effect.andThen(Deferred.await(releaseReload)),
+            Effect.andThen(Effect.sync(replay)),
+          );
+        },
+      }),
+    );
+    replay = () => {
+      reloadCompleted = true;
+      controller.transform([["docs", {}]]);
+    };
+    replay();
+    reloadCompleted = false;
+
+    const exit = await run(
+      Effect.gen(function* () {
+        const mutation = yield* Effect.forkChild(controller.set("docs", false));
+        yield* Deferred.await(reloadStarted);
+        yield* Effect.sync(() => mutation.interruptUnsafe());
+        yield* Deferred.succeed(releaseReload, undefined);
+        return yield* Fiber.await(mutation);
+      }),
+    );
+
+    expect(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)).toBe(true);
+    expect(reloadCompleted).toBe(true);
+    expect(memory.values.get(storageKey("project"))).toEqual({ docs: "disabled" });
+    expect((await run(controller.list()))[0]).toEqual(
+      expect.objectContaining({ enabled: false, override: "disabled" }),
+    );
+    expect((await run(controller.set("docs", true))).enabled).toBe(true);
+  });
+
+  it("does not run a mutation interrupted while waiting for the permit", async () => {
+    const memory = memoryStorage();
+    const firstWrite = Deferred.makeUnsafe<void>();
+    const releaseFirst = Deferred.makeUnsafe<void>();
+    const queuedStarted = Deferred.makeUnsafe<void>();
+    let reloads = 0;
+    const controller = await run(
+      createToggleController({
+        projectID: "project",
+        storage: {
+          get: memory.storage.get,
+          set(key, value) {
+            const save = memory.storage.set(key, value);
+            if (!value.alpha) return save;
+            return Deferred.succeed(firstWrite, undefined).pipe(
+              Effect.andThen(Deferred.await(releaseFirst)),
+              Effect.andThen(save),
+            );
+          },
+        },
+        runtime: () => runtime("alpha", "beta"),
+        reload: () =>
+          Effect.sync(() => {
+            reloads++;
+          }),
+      }),
+    );
+    controller.transform([
+      ["alpha", {}],
+      ["beta", {}],
+    ]);
+
+    const queuedExit = await run(
+      Effect.gen(function* () {
+        const first = yield* Effect.forkChild(controller.set("alpha", false));
+        yield* Deferred.await(firstWrite);
+        const queued = yield* Effect.forkChild(
+          Deferred.succeed(queuedStarted, undefined).pipe(
+            Effect.andThen(controller.set("beta", false)),
+          ),
+        );
+        yield* Deferred.await(queuedStarted);
+        yield* Effect.yieldNow;
+        yield* Effect.sync(() => queued.interruptUnsafe());
+        yield* Deferred.succeed(releaseFirst, undefined);
+        yield* Fiber.join(first);
+        return yield* Fiber.await(queued);
+      }),
+    );
+
+    expect(Exit.isFailure(queuedExit) && Cause.hasInterruptsOnly(queuedExit.cause)).toBe(true);
+    expect(memory.writes).toEqual([{ key: storageKey("project"), value: { alpha: "disabled" } }]);
+    expect(reloads).toBe(1);
   });
 });
