@@ -1,6 +1,6 @@
 {
   "name": "@azatakmyradov/opencode-save-md-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Save the latest OpenCode assistant response as Markdown",
   "keywords": [
     "markdown",
