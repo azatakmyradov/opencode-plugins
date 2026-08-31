@@ -1,5 +1,11 @@
 # @azatakmyradov/opencode-mcp-toggle-plugin
 
+## 0.1.1
+
+### Patch Changes
+
+- d426662: Refactor MCP toggle workflows to Effect with interruption-safe serialized updates while preserving existing overrides and RPC behavior.
+
 ## 0.1.0
 
 ### Minor Changes
