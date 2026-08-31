@@ -29,6 +29,10 @@ export interface GitUiPort {
   confirm(input: {
     title: string;
     message: string;
+    label?: {
+      confirm?: string;
+      cancel?: string;
+    };
     fallback: boolean;
   }): Effect.Effect<boolean, unknown>;
   /** Offer choices; `undefined` means cancelled or no UI. */

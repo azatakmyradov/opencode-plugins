@@ -30,8 +30,8 @@ whenever a TUI connects — no extra configuration needed.
   Generates title/body/base from the diff against the detected base, pushes
   the branch upstream, and opens the PR (or reports an existing PR URL).
 
-While generating or applying, a bordered loader dialog shows progress and
-`esc` aborts: the abort signal propagates into the spawned `git`/`gh`
+While generating or applying, a compact loader dialog shows progress and `esc`
+aborts: the abort signal propagates into the spawned `git`/`gh`
 processes and the generation request. A `● /commit Committing changes…` line
 appears in the prompt footer status slot, and every outcome arrives as a
 toast (`success` / `error` / `warning` / `info`).

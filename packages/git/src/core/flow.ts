@@ -96,17 +96,23 @@ function runCommit(input: FlowInput): Effect.Effect<void, unknown> {
     const branch = yield* g.currentBranch(cwd);
     if (isMainBranch(branch)) {
       const choice = yield* ui.select({
-        title: `You are currently on ${branch}. Where should this commit go?`,
+        title: `Commit directly to ${branch}?`,
         options: [
           {
-            title: "Create a new branch first",
+            title: "Create a new branch",
             value: NEW_BRANCH_CHOICE,
+            description: "Generate a branch name, switch to it, then commit",
           },
           {
-            title: `Commit to ${branch} anyway`,
+            title: `Commit to ${branch}`,
             value: COMMIT_ANYWAY_CHOICE,
+            description: "Continue without creating a feature branch",
           },
-          { title: "Cancel", value: CANCEL_CHOICE },
+          {
+            title: "Cancel",
+            value: CANCEL_CHOICE,
+            description: "Leave the repository unchanged",
+          },
         ],
       });
       if (choice === undefined) {
@@ -144,8 +150,9 @@ function runCommit(input: FlowInput): Effect.Effect<void, unknown> {
 
     const stageAll = shouldAskToStage
       ? yield* ui.confirm({
-          title: "Unstaged changes",
-          message: "Stage all changes before committing?",
+          title: "Include unstaged changes?",
+          message: "Stage all changes before generating the commit?",
+          label: { confirm: "Stage all", cancel: "Staged only" },
           fallback: true,
         })
       : false;
@@ -244,13 +251,18 @@ function runPr(input: FlowInput): Effect.Effect<void, unknown> {
     }
     if (isMainBranch(branch)) {
       const choice = yield* ui.select({
-        title: `You are currently on ${branch}. Where should this pull request go?`,
+        title: `Create a pull request from ${branch}?`,
         options: [
           {
-            title: "Create a new branch first",
+            title: "Create a new branch",
             value: NEW_BRANCH_CHOICE,
+            description: "Generate a branch name, switch to it, then continue",
           },
-          { title: "Cancel", value: CANCEL_CHOICE },
+          {
+            title: "Cancel",
+            value: CANCEL_CHOICE,
+            description: "Leave the repository unchanged",
+          },
         ],
       });
       if (choice === undefined) {

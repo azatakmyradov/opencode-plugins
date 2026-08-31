@@ -111,6 +111,19 @@ describe("generate", () => {
     const error = await Effect.runPromise(
       Effect.flip(generate(() => Effect.fail("boom"), "commit", "prompt")),
     );
-    expect(error.message).toContain("Generator request failed");
+    expect(error.message).toBe("Generator request failed: boom");
+  });
+
+  test("preserves API error messages", async () => {
+    const error = await Effect.runPromise(
+      Effect.flip(
+        generate(
+          () => Effect.fail({ _tag: "InvalidRequestError", message: "Model unavailable" }),
+          "commit",
+          "prompt",
+        ),
+      ),
+    );
+    expect(error.message).toBe("Generator request failed: Model unavailable");
   });
 });

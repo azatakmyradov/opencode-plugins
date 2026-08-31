@@ -1,4 +1,4 @@
-import { Data, Effect, Schema } from "effect";
+import { Cause, Data, Effect, Schema } from "effect";
 import { Model } from "@opencode-ai/schema/model";
 
 /** A provider/model pair, structural so both the server and TUI can build one. */
@@ -117,6 +117,24 @@ const toGenerationError = (error: unknown): GenerationError => {
   return new GenerationError({ message: "Generator returned invalid data" });
 };
 
+const toRequestError = (cause: Cause.Cause<unknown>): GenerationError => {
+  const error = Cause.squash(cause);
+  const detail =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" &&
+          error !== null &&
+          "message" in error &&
+          typeof error.message === "string"
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : undefined;
+  return new GenerationError({
+    message: detail ? `Generator request failed: ${detail}` : "Generator request failed",
+  });
+};
+
 /** Pull the first JSON object out of a possibly fenced or prosaic reply. */
 export function extractJson(text: string): Effect.Effect<unknown, GenerationError> {
   return Effect.suspend(() => {
@@ -200,7 +218,7 @@ export function generate(
         model: options?.model,
         signal: options?.signal,
       }),
-      () => Effect.fail(new GenerationError({ message: "Generator request failed" })),
+      (cause) => Effect.fail(toRequestError(cause)),
     );
     const data = yield* extractJson(result.text);
     return yield* validateGenerated(action, data);

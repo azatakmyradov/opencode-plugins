@@ -37,8 +37,11 @@ export function createTuiGitPort(input: {
     confirm: (dialog) =>
       Effect.tryPromise({
         try: async () =>
-          (await context.ui.dialog.confirm({ title: dialog.title, message: dialog.message })) ===
-          true,
+          (await context.ui.dialog.confirm({
+            title: dialog.title,
+            message: dialog.message,
+            label: dialog.label,
+          })) === true,
         catch: (error) => error,
       }),
 
@@ -83,6 +86,7 @@ export function createTuiGitPort(input: {
           controller.signal.addEventListener("abort", onAbort);
           statusStore.set(loader.stage);
 
+          context.ui.dialog.set({ size: "medium", centered: true });
           context.ui.dialog.show(
             () => <LoaderDialog stage={loader.stage} theme={context.theme} />,
             () => controller.abort(),
