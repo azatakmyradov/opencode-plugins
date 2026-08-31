@@ -1,21 +1,20 @@
 {
-  "name": "@azatakmyradov/opencode-git-plugin",
-  "version": "0.1.0",
-  "description": "Interactive Git workflows and safety hooks for OpenCode V2",
+  "name": "@azatakmyradov/opencode-mcp-toggle-plugin",
+  "version": "0.0.0",
+  "description": "Per-project MCP server toggles for OpenCode V2",
   "keywords": [
-    "git",
-    "github",
+    "mcp",
     "opencode",
     "opencode-plugin",
     "tui"
   ],
-  "homepage": "https://github.com/azatakmyradov/opencode-plugins/tree/main/packages/git",
+  "homepage": "https://github.com/azatakmyradov/opencode-plugins/tree/main/packages/mcp-toggle",
   "bugs": "https://github.com/azatakmyradov/opencode-plugins/issues",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/azatakmyradov/opencode-plugins.git",
-    "directory": "packages/git"
+    "directory": "packages/mcp-toggle"
   },
   "files": [
     "dist",
@@ -24,7 +23,8 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
-    "./tui": "./dist/tui.js"
+    "./tui": "./dist/tui.js",
+    "./rpc": "./dist/rpc.js"
   },
   "publishConfig": {
     "access": "public"
@@ -37,11 +37,7 @@
   },
   "dependencies": {
     "@opencode-ai/plugin": "0.0.0-beta-18721",
-    "@opencode-ai/schema": "0.0.0-beta-18721",
-    "effect": "4.0.0-rc.112"
-  },
-  "devDependencies": {
-    "@opencode-ai/theme": "0.0.0-beta-18721"
+    "zod": "4.1.8"
   },
   "peerDependencies": {
     "@opentui/core": ">=0.5.9",

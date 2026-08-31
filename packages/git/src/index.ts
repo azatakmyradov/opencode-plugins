@@ -6,7 +6,6 @@ import { commandSpecs, parseModelRef, type CommandDeps } from "./commands.ts";
 
 export default Plugin.define({
   id: "git",
-  tui: true,
   effect: (ctx) =>
     Effect.gen(function* () {
       const model = yield* Effect.catchCause(
