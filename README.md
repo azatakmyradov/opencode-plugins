@@ -1,11 +1,12 @@
 # OpenCode plugins
 
-This workspace contains four OpenCode V2 plugins:
+This workspace contains five OpenCode V2 plugins:
 
 - `@azatakmyradov/opencode-git-plugin` provides interactive commit, branch, and pull request workflows, plus git safety hooks.
 - `@azatakmyradov/opencode-mcp-toggle-plugin` stores per-project MCP enablement overrides without editing configuration files.
 - `@azatakmyradov/opencode-recap-plugin` saves a compact recap when an assistant run in the root session finishes.
 - `@azatakmyradov/opencode-save-md-plugin` saves the latest assistant response as Markdown in the server workspace.
+- `@azatakmyradov/opencode-workflows-plugin` runs model-authored multi-agent workflow scripts in a sandbox, with each agent as a real child session.
 
 ## Install
 
@@ -16,6 +17,7 @@ opencode2 plugin add @azatakmyradov/opencode-git-plugin
 opencode2 plugin add @azatakmyradov/opencode-mcp-toggle-plugin
 opencode2 plugin add @azatakmyradov/opencode-recap-plugin
 opencode2 plugin add @azatakmyradov/opencode-save-md-plugin
+opencode2 plugin add @azatakmyradov/opencode-workflows-plugin
 opencode2 plugin list
 ```
 
@@ -27,7 +29,7 @@ opencode2 service restart
 
 Use an exact package version for a reproducible install that does not update.
 
-To develop from this workspace, run `bun install`. Local package loading requires a directory with `index.ts` and optional `tui.tsx` entrypoints. The `save-md` and `mcp-toggle` packages provide these at their roots; for other packages, use a local plugin directory that re-exports their `src` entrypoints. Run a package build first when testing npm `dist` exports.
+To develop from this workspace, run `bun install`. Local package loading requires a directory with `index.ts` and optional `tui.tsx` entrypoints. The `save-md`, `mcp-toggle`, and `workflows` packages provide these at their roots; for other packages, use a local plugin directory that re-exports their `src` entrypoints. Run a package build first when testing npm `dist` exports.
 
 ## Save Markdown
 
@@ -47,6 +49,14 @@ Use `/mcp-toggle` to open a selector for toggling configured MCP servers. Use `/
 
 Preferences are stored per user and project ID, survive service restarts, and apply in headless use before a TUI connects. The plugin changes only effective MCP configuration in memory. It never edits `opencode.json(c)`, and removing it restores configured behavior.
 
+## Workflows
+
+The workflows plugin adds a `workflow` tool that the model calls with an inline JavaScript orchestration script using `phase()`, `agent()`, and `parallel()`. The script runs in an external Node `--permission` sandbox with no filesystem, network, process, or import access, while each `agent()` call runs as a real OpenCode child session. Call it by saying "ultracode" or by explicitly asking for a workflow run; "ultracode" also pre-approves the tool permission.
+
+Runs block with live progress by default, or return a run id immediately with `background: true`. Each run writes `script.js`, `args.json`, `workflow.json`, `transcripts.json`, and `result.json` under the workflows data directory and is pruned after 14 days. Open `/workflows` from a session to browse that session's runs, agent detail, and transcripts, and to abort a running workflow.
+
+A system Node 22 or newer with `--permission` support is required; there is no unsandboxed fallback. A run may make up to 32 real child sessions at a concurrency of 4, so costs scale accordingly. See [`packages/workflows/README.md`](packages/workflows/README.md) for the script DSL and options.
+
 ## Development
 
 ```bash
@@ -55,6 +65,9 @@ bun run --filter @azatakmyradov/opencode-recap-plugin test
 bun run --filter @azatakmyradov/opencode-save-md-plugin check
 bun run --filter @azatakmyradov/opencode-save-md-plugin test
 bun run --filter @azatakmyradov/opencode-save-md-plugin build
+bun run --filter @azatakmyradov/opencode-workflows-plugin check
+bun run --filter @azatakmyradov/opencode-workflows-plugin test
+bun run --filter @azatakmyradov/opencode-workflows-plugin build
 bun run check
 bun run test
 bun run build
@@ -78,8 +91,10 @@ npm publish --workspace @azatakmyradov/opencode-git-plugin
 npm publish --workspace @azatakmyradov/opencode-mcp-toggle-plugin
 npm publish --workspace @azatakmyradov/opencode-recap-plugin
 npm publish --workspace @azatakmyradov/opencode-save-md-plugin
+npm publish --workspace @azatakmyradov/opencode-workflows-plugin
 npm trust github @azatakmyradov/opencode-git-plugin --file release.yml --repo azatakmyradov/opencode-plugins --allow-publish
 npm trust github @azatakmyradov/opencode-mcp-toggle-plugin --file release.yml --repo azatakmyradov/opencode-plugins --allow-publish
 npm trust github @azatakmyradov/opencode-recap-plugin --file release.yml --repo azatakmyradov/opencode-plugins --allow-publish
 npm trust github @azatakmyradov/opencode-save-md-plugin --file release.yml --repo azatakmyradov/opencode-plugins --allow-publish
+npm trust github @azatakmyradov/opencode-workflows-plugin --file release.yml --repo azatakmyradov/opencode-plugins --allow-publish
 ```

@@ -14,6 +14,8 @@ const config = defineConfig({
     ".roo/**",
     ".windsurf/**",
     "tools/oxlint/anti-slop/**",
+    // Dependency-free CommonJS sidecars run verbatim under bare Node.
+    "**/*.cjs",
   ],
   jsPlugins: [
     { name: "anti-slop", specifier: "./tools/oxlint/anti-slop/index.ts" },

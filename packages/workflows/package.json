@@ -1,0 +1,63 @@
+{
+  "name": "@azatakmyradov/opencode-workflows-plugin",
+  "version": "0.0.0",
+  "description": "Sandboxed multi-agent workflow runs for OpenCode V2",
+  "keywords": [
+    "agents",
+    "opencode",
+    "opencode-plugin",
+    "sandbox",
+    "tui",
+    "workflow"
+  ],
+  "homepage": "https://github.com/azatakmyradov/opencode-plugins/tree/main/packages/workflows",
+  "bugs": "https://github.com/azatakmyradov/opencode-plugins/issues",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/azatakmyradov/opencode-plugins.git",
+    "directory": "packages/workflows"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./tui": "./dist/tui.js",
+    "./rpc": "./dist/rpc.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun ../../scripts/build.ts .",
+    "check": "tsc --noEmit",
+    "prepack": "bun run build",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "0.0.0-beta-18721",
+    "@opencode-ai/schema": "0.0.0-beta-18721",
+    "acorn": "^8.14.0",
+    "effect": "4.0.0-rc.112",
+    "zod": "4.1.8"
+  },
+  "peerDependencies": {
+    "@opentui/core": ">=0.5.9",
+    "@opentui/solid": ">=0.5.9",
+    "solid-js": ">=1.9.0"
+  },
+  "peerDependenciesMeta": {
+    "@opentui/core": {
+      "optional": true
+    },
+    "@opentui/solid": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    }
+  }
+}
