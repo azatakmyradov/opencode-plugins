@@ -1,5 +1,11 @@
 # @azatakmyradov/opencode-git-plugin
 
+## 0.1.2
+
+### Patch Changes
+
+- b5340d0: Prevent stalled Git generation dialogs by routing model requests through the server plugin, enforcing a timeout, propagating cancellation, and showing generation failures in persistent dialogs.
+
 ## 0.1.1
 
 ### Patch Changes
