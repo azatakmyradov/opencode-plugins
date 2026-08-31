@@ -1,4 +1,5 @@
 import { Plugin } from "@opencode-ai/plugin/tui";
+import { Cause, Effect, Option, Semaphore } from "effect";
 import { z } from "zod";
 import { resolveServer, serverOption } from "./presentation.ts";
 import { McpToggleRpc, type McpServerState } from "./rpc.ts";
@@ -20,7 +21,7 @@ export default Plugin.define({
   id: "mcp-toggle",
   setup(context) {
     const rpc = context.client.rpc(McpToggleRpc);
-    let running = false;
+    const workflows = Semaphore.makeUnsafe(1);
 
     function showFailure(error: unknown): void {
       const failure = RpcFailure.safeParse(error);
@@ -103,63 +104,89 @@ export default Plugin.define({
       });
     }
 
-    async function run(workflow: Workflow, input: string | undefined): Promise<void> {
-      if (running) {
-        context.ui.toast.show({
-          title: "MCP toggle",
-          message: "An MCP toggle workflow is already open.",
-          variant: "warning",
-        });
-        return;
-      }
-      running = true;
+    const runWorkflow = Effect.fn("McpToggle.runWorkflow")(function* (
+      workflow: Workflow,
+      input: string | undefined,
+    ) {
       const direct = input?.trim();
 
-      try {
-        while (true) {
-          const current = context.location ?? context.data.location.default();
-          const location = { directory: current.directory, workspace: current.workspaceID };
-          const servers = await rpc.list({}, { location });
-          if (servers.length === 0) {
+      while (true) {
+        const current = context.location ?? context.data.location.default();
+        const location = { directory: current.directory, workspace: current.workspaceID };
+        const servers = yield* Effect.tryPromise({
+          try: (signal) => rpc.list({}, { location, signal }),
+          catch: (error) => error,
+        });
+        if (servers.length === 0) {
+          yield* Effect.sync(() =>
             context.ui.toast.show({
               title: "MCP toggle",
               message: "No MCP servers are configured for this location.",
               variant: "info",
-            });
-            return;
-          }
+            }),
+          );
+          return;
+        }
 
-          let server = resolveServer(direct, servers);
-          if (direct && !server) {
+        let server = resolveServer(direct, servers);
+        if (direct && !server) {
+          yield* Effect.sync(() =>
             context.ui.toast.show({
               title: "MCP toggle",
               message: `MCP server not found: ${direct}`,
               variant: "warning",
-            });
-            return;
-          }
-          if (!server) {
-            const name = await context.ui.dialog.select({
-              title: workflow === "toggle" ? "Toggle MCP server" : "Reset MCP server override",
-              options: servers.map(serverOption),
-            });
-            if (!name) return;
-            server = resolveServer(name, servers);
-            if (!server) continue;
-          }
-
-          const result =
-            workflow === "toggle"
-              ? await rpc.set({ name: server.name, enabled: !server.enabled }, { location })
-              : await rpc.reset({ name: server.name }, { location });
-          showResult(result, workflow);
-          if (direct) return;
+            }),
+          );
+          return;
         }
-      } catch (error) {
-        showFailure(error);
-      } finally {
-        running = false;
+        if (!server) {
+          const name = yield* Effect.tryPromise({
+            try: () =>
+              context.ui.dialog.select({
+                title: workflow === "toggle" ? "Toggle MCP server" : "Reset MCP server override",
+                options: servers.map(serverOption),
+              }),
+            catch: (error) => error,
+          });
+          if (!name) return;
+          server = resolveServer(name, servers);
+          if (!server) continue;
+        }
+
+        const selected = server;
+        const result = yield* Effect.tryPromise({
+          try: (signal) =>
+            workflow === "toggle"
+              ? rpc.set({ name: selected.name, enabled: !selected.enabled }, { location, signal })
+              : rpc.reset({ name: selected.name }, { location, signal }),
+          catch: (error) => error,
+        });
+        yield* Effect.sync(() => showResult(result, workflow));
+        if (direct) return;
       }
+    });
+
+    function run(workflow: Workflow, input: string | undefined): Promise<void> {
+      return Effect.runPromise(
+        workflows
+          .withPermitsIfAvailable(1)(runWorkflow(workflow, input))
+          .pipe(
+            Effect.flatMap((result) => {
+              if (Option.isSome(result)) return Effect.void;
+              return Effect.sync(() =>
+                context.ui.toast.show({
+                  title: "MCP toggle",
+                  message: "An MCP toggle workflow is already open.",
+                  variant: "warning",
+                }),
+              );
+            }),
+            Effect.catchCause((cause) => {
+              if (Cause.hasInterruptsOnly(cause)) return Effect.void;
+              return Effect.sync(() => showFailure(Cause.squash(cause)));
+            }),
+          ),
+      );
     }
 
     function AppExtensions() {
