@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { SessionMessage } from "@opencode-ai/schema/session-message";
@@ -154,6 +154,20 @@ describe("Markdown saving", () => {
       expect(error).toBeInstanceOf(FileSystemWriteError);
       if (error._tag !== "FileSystemWriteError") throw error;
       expect(error.path).toBe(join(directory, "missing/notes.md"));
+    });
+  });
+
+  it("rejects destinations redirected outside the location by a symbolic link", async () => {
+    await withTempDirectory(async (directory) => {
+      await withTempDirectory(async (outside) => {
+        await symlink(outside, join(directory, "linked"), "dir");
+        const error = await Effect.runPromise(
+          Effect.flip(saveMarkdown(directory, "linked/notes", "text")),
+        );
+
+        expect(error).toBeInstanceOf(InvalidPathError);
+        await expect(access(join(outside, "notes.md"))).rejects.toThrow();
+      });
     });
   });
 

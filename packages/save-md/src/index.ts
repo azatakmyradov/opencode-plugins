@@ -1,8 +1,31 @@
 import type { Session } from "@opencode-ai/schema/session";
-import { Effect } from "effect";
+import { Cause, Effect, Schema } from "effect";
 import { Plugin } from "@opencode-ai/plugin/effect";
 import { saveLatestAssistant } from "./core.ts";
 import { SaveMdRpc } from "./rpc.ts";
+
+class SessionAccessError extends Schema.TaggedError<SessionAccessError>()("SessionAccessError", {
+  operation: Schema.Literals(["wait", "context"]),
+  message: Schema.String,
+  cause: Schema.Defect(),
+}) {}
+
+function sessionOperation<A, R>(
+  operation: "wait" | "context",
+  effect: Effect.Effect<A, unknown, R>,
+): Effect.Effect<A, SessionAccessError, R> {
+  return Effect.catchCause(effect, (cause) => {
+    if (Cause.hasInterruptsOnly(cause)) return Effect.interrupt;
+    const error = Cause.squash(cause);
+    return Effect.fail(
+      new SessionAccessError({
+        operation,
+        cause: error,
+        message: `Session ${operation} failed: ${error instanceof Error ? error.message : String(error)}`,
+      }),
+    );
+  });
+}
 
 export default Plugin.define({
   id: "save-md",
@@ -14,8 +37,11 @@ export default Plugin.define({
             // The portable RPC contract validates this as a non-empty string.
             const id = sessionID as Session.ID;
             return Effect.gen(function* () {
-              yield* ctx.session.wait({ sessionID: id }).pipe(Effect.orDie);
-              const messages = yield* ctx.session.context({ sessionID: id }).pipe(Effect.orDie);
+              yield* sessionOperation("wait", ctx.session.wait({ sessionID: id }));
+              const messages = yield* sessionOperation(
+                "context",
+                ctx.session.context({ sessionID: id }),
+              );
               const path = yield* saveLatestAssistant(ctx.location.directory, name, messages);
               return { path };
             }).pipe(
@@ -31,6 +57,10 @@ export default Plugin.define({
                 FileSystemWriteError: (error) =>
                   Effect.fail(
                     rpc.error("filesystem_write_failed", error.message, { path: error.path }),
+                  ),
+                SessionAccessError: (error) =>
+                  Effect.fail(
+                    rpc.error("session_failed", error.message, { operation: error.operation }),
                   ),
               }),
             );

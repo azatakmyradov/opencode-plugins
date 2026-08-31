@@ -27,7 +27,7 @@ opencode2 service restart
 
 Use an exact package version for a reproducible install that does not update.
 
-To develop from this workspace, run `bun install`. For packages with root development entrypoints, load the package directory by absolute path in `opencode.jsonc`; OpenCode discovers both `index.ts` and `tui.tsx`. Run a package build first when testing its npm `dist` exports.
+To develop from this workspace, run `bun install`. Local package loading requires a directory with `index.ts` and optional `tui.tsx` entrypoints. The `save-md` and `mcp-toggle` packages provide these at their roots; for other packages, use a local plugin directory that re-exports their `src` entrypoints. Run a package build first when testing npm `dist` exports.
 
 ## Save Markdown
 

@@ -22,15 +22,24 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./dist/index.js",
-    "./tui": "./dist/tui.js",
-    "./rpc": "./dist/rpc.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./tui": {
+      "types": "./dist/tui.d.ts",
+      "import": "./dist/tui.js"
+    },
+    "./rpc": {
+      "types": "./dist/rpc.d.ts",
+      "import": "./dist/rpc.js"
+    }
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "bun ../../scripts/build.ts .",
+    "build": "bun ../../scripts/build.ts . && tsc -p tsconfig.build.json",
     "check": "tsc --noEmit",
     "prepack": "bun run build",
     "test": "vp test run"

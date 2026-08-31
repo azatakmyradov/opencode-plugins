@@ -1,6 +1,6 @@
 import { Plugin } from "@opencode-ai/plugin/tui";
 import { Cause, Effect, Option, Semaphore } from "effect";
-import { SaveMdRpc, SaveMdRpcFailure } from "./rpc.ts";
+import { RpcFailure, SaveMdRpc, SaveMdRpcFailure } from "./rpc.ts";
 
 const TITLE = "Save Markdown";
 
@@ -9,13 +9,19 @@ export default Plugin.define({
   setup(context) {
     const rpc = context.client.rpc(SaveMdRpc);
     const workflows = Semaphore.makeUnsafe(1);
+    const lifecycle = new AbortController();
 
     function showFailure(error: unknown): void {
       const parsed = SaveMdRpcFailure.safeParse(error);
       if (!parsed.success) {
+        const fallback = RpcFailure.safeParse(error);
         context.ui.toast.show({
           title: TITLE,
-          message: error instanceof Error ? error.message : String(error),
+          message: fallback.success
+            ? fallback.data.message
+            : error instanceof Error
+              ? error.message
+              : String(error),
           variant: "error",
         });
         return;
@@ -76,7 +82,11 @@ export default Plugin.define({
         workspace: session.location.workspaceID,
       };
       const result = yield* Effect.tryPromise({
-        try: (signal) => rpc.save({ sessionID: route.sessionID, name }, { location, signal }),
+        try: (signal) =>
+          rpc.save(
+            { sessionID: route.sessionID, name },
+            { location, signal: AbortSignal.any([signal, lifecycle.signal]) },
+          ),
         catch: (error) => error,
       });
       yield* Effect.sync(() =>
@@ -104,7 +114,7 @@ export default Plugin.define({
               );
             }),
             Effect.catchCause((cause) => {
-              if (Cause.hasInterruptsOnly(cause)) return Effect.void;
+              if (lifecycle.signal.aborted || Cause.hasInterruptsOnly(cause)) return Effect.void;
               return Effect.sync(() => showFailure(Cause.squash(cause)));
             }),
           ),
@@ -132,6 +142,10 @@ export default Plugin.define({
       return <></>;
     }
 
-    return context.ui.slot({ append: "app", render: AppExtensions });
+    const removeSlot = context.ui.slot({ append: "app", render: AppExtensions });
+    return () => {
+      lifecycle.abort();
+      removeSlot();
+    };
   },
 });

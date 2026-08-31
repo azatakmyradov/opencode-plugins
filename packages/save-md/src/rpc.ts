@@ -4,6 +4,7 @@ import { z } from "zod";
 const NoDetails = z.object({});
 const InvalidPathDetails = z.object({ name: z.string() });
 const DestinationDetails = z.object({ path: z.string() });
+const SessionFailureDetails = z.object({ operation: z.enum(["wait", "context"]) });
 
 export const SaveMdRpc = Rpc.define({
   id: "save-md",
@@ -20,6 +21,7 @@ export const SaveMdRpc = Rpc.define({
         invalid_path: InvalidPathDetails,
         destination_exists: DestinationDetails,
         filesystem_write_failed: DestinationDetails,
+        session_failed: SessionFailureDetails,
       },
     },
   },
@@ -40,4 +42,11 @@ export const SaveMdRpcFailure = z.discriminatedUnion("type", [
     message: z.string(),
     data: DestinationDetails,
   }),
+  z.object({
+    type: z.literal("session_failed"),
+    message: z.string(),
+    data: SessionFailureDetails,
+  }),
 ]);
+
+export const RpcFailure = z.object({ type: z.string(), message: z.string() });

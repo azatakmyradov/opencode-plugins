@@ -1,5 +1,5 @@
-import { writeFile } from "node:fs/promises";
-import { isAbsolute, relative, resolve, sep, win32 } from "node:path";
+import { realpath, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, relative, resolve, sep, win32 } from "node:path";
 import type { SessionMessage } from "@opencode-ai/schema/session-message";
 import { DateTime, Effect, Schema } from "effect";
 
@@ -44,6 +44,32 @@ export type SaveMarkdownError =
 
 const ExistingFileSystemError = Schema.Struct({ code: Schema.Literal("EEXIST") });
 const isExistingFileSystemError = Schema.is(ExistingFileSystemError);
+
+function writeFailure(path: string, cause: unknown): FileSystemWriteError {
+  return new FileSystemWriteError({
+    path,
+    cause,
+    message: `Could not write Markdown to ${path}: ${cause instanceof Error ? cause.message : String(cause)}`,
+  });
+}
+
+const validatePhysicalContainment = Effect.fn("validatePhysicalContainment")(function* (
+  directory: string,
+  destination: string,
+  name: string,
+): Effect.fn.Return<void, InvalidPathError | FileSystemWriteError> {
+  const [root, parent] = yield* Effect.tryPromise({
+    try: () => Promise.all([realpath(directory), realpath(dirname(destination))]),
+    catch: (cause) => writeFailure(destination, cause),
+  });
+  const contained = relative(root, parent);
+  if (contained === ".." || contained.startsWith(`..${sep}`) || isAbsolute(contained)) {
+    return yield* new InvalidPathError({
+      name,
+      message: "The destination path escapes the current location through a symbolic link.",
+    });
+  }
+});
 
 export const selectLatestAssistant = Effect.fn("selectLatestAssistant")(function* (
   messages: readonly SessionMessage.Info[],
@@ -131,6 +157,7 @@ export const saveMarkdown = Effect.fn("saveMarkdown")(function* (
   markdown: string,
 ): Effect.fn.Return<string, InvalidPathError | DestinationExistsError | FileSystemWriteError> {
   const destination = yield* resolveMarkdownPath(directory, name);
+  yield* validatePhysicalContainment(resolve(directory), destination, name);
   const content = markdown.endsWith("\n") ? markdown : `${markdown}\n`;
 
   yield* Effect.tryPromise({
@@ -147,11 +174,7 @@ export const saveMarkdown = Effect.fn("saveMarkdown")(function* (
           message: `Destination already exists: ${destination}`,
         });
       }
-      return new FileSystemWriteError({
-        path: destination,
-        cause,
-        message: `Could not write Markdown to ${destination}: ${cause instanceof Error ? cause.message : String(cause)}`,
-      });
+      return writeFailure(destination, cause);
     },
   });
 
