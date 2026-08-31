@@ -10,6 +10,10 @@
     "check": "bun run --filter '*' check",
     "prepare": "vp config"
   },
+  "dependencies": {
+    "@opencode-ai/client": "0.0.0-beta-18414",
+    "@opencode-ai/plugin": "0.0.0-beta-18414"
+  },
   "devDependencies": {
     "@opentui/solid": "^0.5.9",
     "@oxlint/plugins": "1.80.0",
@@ -20,6 +24,7 @@
     "vite-plus": "catalog:"
   },
   "overrides": {
+    "@opencode-ai/plugin": "0.0.0-beta-18414",
     "vite": "catalog:"
   },
   "devEngines": {
