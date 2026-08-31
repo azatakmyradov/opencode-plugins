@@ -2,7 +2,7 @@ import { Show } from "solid-js";
 import { Effect } from "effect";
 import { Plugin } from "@opencode-ai/plugin/tui";
 import { runFlow } from "./core/flow.ts";
-import { parseModelRef, type Action } from "./core/generate.ts";
+import type { Action } from "./core/generate.ts";
 import type { LoaderStage } from "./core/ui-port.ts";
 import { createTuiGitPort } from "./tui/port.tsx";
 import { createStatusStore } from "./tui/status.ts";
@@ -15,14 +15,6 @@ export default Plugin.define({
     const statusStore = createStatusStore();
     const { ui, generateText, abort } = createTuiGitPort({ context, statusStore });
 
-    const model = Effect.runSync(
-      parseModelRef(context.options.model).pipe(
-        Effect.tapError((error) =>
-          Effect.sync(() => console.error(`opencode-git-plugin: ${error.message}`)),
-        ),
-        Effect.orElseSucceed(() => undefined),
-      ),
-    );
     const cwd = context.location?.directory ?? process.cwd();
 
     let busy = false;
@@ -39,7 +31,6 @@ export default Plugin.define({
           deps: {
             cwd,
             generateText,
-            model,
           },
           ui,
         }).pipe(

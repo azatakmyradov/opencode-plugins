@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { Plugin } from "@opencode-ai/plugin/tui";
 import type { GenerateText } from "../core/generate.ts";
 import type { GitUiPort, LoaderInput } from "../core/ui-port.ts";
+import { GitRpc } from "../rpc.ts";
 import { LoaderDialog } from "./loader.tsx";
 import type { StatusStore } from "./status.ts";
 
@@ -19,16 +20,19 @@ export function createTuiGitPort(input: {
 }): TuiGitPort {
   const { context, statusStore } = input;
   let activeController: AbortController | undefined;
+  const rpc = context.client.rpc(GitRpc);
+  const current = context.location ?? context.data.location.default();
+  const location = { directory: current.directory, workspace: current.workspaceID };
 
   const generateText: GenerateText = (request) =>
     Effect.tryPromise({
-      try: () =>
-        context.client.generate.text(
+      try: (signal) =>
+        rpc.generate(
+          { prompt: request.prompt },
           {
-            prompt: request.prompt,
-            model: request.model,
+            location,
+            signal: request.signal ? AbortSignal.any([signal, request.signal]) : signal,
           },
-          { signal: request.signal },
         ),
       catch: (error) => error,
     });
@@ -51,14 +55,21 @@ export function createTuiGitPort(input: {
         catch: (error) => error,
       }),
 
-    notify: (notification) =>
-      Effect.sync(() =>
+    notify: (notification) => {
+      if (notification.variant === "error") {
+        return Effect.tryPromise({
+          try: () => context.ui.dialog.alert({ title: "Git", message: notification.message }),
+          catch: (error) => error,
+        }).pipe(Effect.catchCause(() => Effect.void));
+      }
+      return Effect.sync(() =>
         context.ui.toast.show({
           title: "Git",
           message: notification.message,
           variant: notification.variant,
         }),
-      ),
+      );
+    },
 
     withLoader<T>(loader: LoaderInput<T>) {
       return Effect.tryPromise<T | undefined, unknown>({

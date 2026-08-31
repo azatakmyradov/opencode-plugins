@@ -26,6 +26,7 @@
         "@opencode-ai/plugin": "0.0.0-beta-18721",
         "@opencode-ai/schema": "0.0.0-beta-18721",
         "effect": "4.0.0-rc.112",
+        "zod": "4.1.8",
       },
       "devDependencies": {
         "@opencode-ai/theme": "0.0.0-beta-18721",

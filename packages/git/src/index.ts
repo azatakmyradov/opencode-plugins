@@ -1,8 +1,9 @@
-import { Effect } from "effect";
+import { Cause, Effect } from "effect";
 import { Model, Plugin } from "@opencode-ai/plugin/effect";
 import type { Session } from "@opencode-ai/schema/session";
 import { applyGitEditorEnv, BLOCK_REASON, shouldBlockNoVerify } from "./interceptor.ts";
 import { commandSpecs, parseModelRef, type CommandDeps } from "./commands.ts";
+import { GitRpc } from "./rpc.ts";
 
 export default Plugin.define({
   id: "git",
@@ -37,6 +38,19 @@ export default Plugin.define({
           Effect.asVoid(ctx.session.synthetic({ sessionID: sessionID as Session.ID, text })),
         model,
       };
+
+      yield* ctx.rpc
+        .register(GitRpc, {
+          generate: ({ prompt }, rpc) =>
+            deps.generateText({ prompt, model }).pipe(
+              Effect.catchCause((cause) => {
+                const error = Cause.squash(cause);
+                const message = error instanceof Error ? error.message : String(error);
+                return Effect.fail(rpc.error("generation_failed", message, {}));
+              }),
+            ),
+        })
+        .pipe(Effect.orDie);
 
       // Avoid shadowing the interactive TUI commands unless explicitly enabled.
       if (ctx.options.headlessCommands === true) {

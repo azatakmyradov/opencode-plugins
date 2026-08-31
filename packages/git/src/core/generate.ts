@@ -44,6 +44,7 @@ export class GenerationError extends Data.TaggedError("GenerationError")<{
 }> {}
 
 const MAX_DIFF_CHARS = 60_000;
+const GENERATION_TIMEOUT_MS = 60_000;
 
 export function truncate(text: string, limit = MAX_DIFF_CHARS): string {
   if (text.length <= limit) return text;
@@ -185,6 +186,7 @@ export function validateGenerated(
 export interface GenerateOptions {
   readonly model?: ModelRef;
   readonly signal?: AbortSignal;
+  readonly timeoutMs?: number;
 }
 
 export function generate(
@@ -212,13 +214,18 @@ export function generate(
   options?: GenerateOptions,
 ): Effect.Effect<Generated, GenerationError> {
   return Effect.gen(function* () {
-    const result = yield* Effect.catchCause(
-      generateText({
-        prompt,
-        model: options?.model,
-        signal: options?.signal,
-      }),
-      (cause) => Effect.fail(toRequestError(cause)),
+    const result = yield* generateText({
+      prompt,
+      model: options?.model,
+      signal: options?.signal,
+    }).pipe(
+      Effect.catchCause((cause) => Effect.fail(toRequestError(cause))),
+      Effect.timeout(options?.timeoutMs ?? GENERATION_TIMEOUT_MS),
+      Effect.mapError((error) =>
+        error._tag === "TimeoutError"
+          ? new GenerationError({ message: "Generator request timed out" })
+          : error,
+      ),
     );
     const data = yield* extractJson(result.text);
     return yield* validateGenerated(action, data);

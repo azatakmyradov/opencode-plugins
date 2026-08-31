@@ -126,4 +126,11 @@ describe("generate", () => {
     );
     expect(error.message).toBe("Generator request failed: Model unavailable");
   });
+
+  test("times out stalled generator requests", async () => {
+    const error = await Effect.runPromise(
+      Effect.flip(generate(() => Effect.never, "commit", "prompt", { timeoutMs: 1 })),
+    );
+    expect(error.message.toLowerCase()).toContain("timed out");
+  });
 });

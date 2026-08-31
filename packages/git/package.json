@@ -24,7 +24,8 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
-    "./tui": "./dist/tui.js"
+    "./tui": "./dist/tui.js",
+    "./rpc": "./dist/rpc.js"
   },
   "publishConfig": {
     "access": "public"
@@ -38,7 +39,8 @@
   "dependencies": {
     "@opencode-ai/plugin": "0.0.0-beta-18721",
     "@opencode-ai/schema": "0.0.0-beta-18721",
-    "effect": "4.0.0-rc.112"
+    "effect": "4.0.0-rc.112",
+    "zod": "4.1.8"
   },
   "devDependencies": {
     "@opencode-ai/theme": "0.0.0-beta-18721"
