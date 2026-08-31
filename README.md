@@ -1,34 +1,37 @@
 # OpenCode plugins
 
-This workspace contains OpenCode V2 plugins:
+This workspace contains two OpenCode V2 plugins:
 
-- `opencode-git-plugin`: interactive commit, branch, and pull-request workflows plus git safety hooks.
-- `opencode-recap-plugin`: generates and persists a compact recap after each settled root-session run.
+- `opencode-git-plugin` provides interactive commit, branch, and pull request workflows, plus git safety hooks.
+- `opencode-recap-plugin` saves a compact recap when an assistant run in the root session finishes.
 
 ## Install
 
+Install either plugin directly from this GitHub repository:
+
 ```bash
-bun install
+opencode2 plugin add 'github:azatakmyradov/opencode-plugins#main::path:packages/git'
+opencode2 plugin add 'github:azatakmyradov/opencode-plugins#main::path:packages/recap'
+opencode2 plugin list
 ```
 
-Add a published package to `plugins` in `opencode.jsonc`. The server entrypoint enables its matching TUI entrypoint automatically:
+The server entrypoint automatically enables its matching TUI entrypoint. Installs that track `main` start with the cached version and check GitHub for updates in the background. The next service start activates any downloaded update:
 
-```jsonc
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugins": ["opencode-git-plugin", "opencode-recap-plugin"],
-}
+```bash
+opencode2 service restart
 ```
 
-When developing from this workspace, load each package's `src/index.ts` in `opencode.jsonc` and `src/tui.tsx` in the global CLI plugin configuration.
+Use a full commit SHA instead of `main` for a reproducible install that does not update.
+
+To develop from this workspace, run `bun install`. Load each package's `src/index.ts` in `opencode.jsonc` and its `src/tui.tsx` in the global CLI plugin configuration.
 
 ## Recaps
 
-The recap plugin shows only the latest recap directly after the completed assistant message. It scrolls with the transcript without becoming part of session or model context. Use `/recap-model` to select an enabled provider, model, and declared variant. The default is `openai-codex/gpt-5.6-luna#medium`.
+The recap plugin shows only the latest recap, directly after the completed assistant message. It scrolls with the transcript but never becomes part of the session or model context. Use `/recap-model` to choose an enabled provider, model, and declared variant. The default is `openai-codex/gpt-5.6-luna#medium`.
 
-Up to 48 KB of current-run text, tool arguments, textual tool results, and shell output is sent to the selected provider. Secrets are redacted on a best-effort basis; do not treat redaction as a security boundary. Reasoning, file content, binary output, system/skill messages, and compaction records are excluded.
+The plugin sends up to 48 KB of text from the current run to the selected provider. This may include tool arguments, textual tool results, and shell output. The plugin tries to redact secrets, but redaction is not a security boundary. It excludes reasoning, file content, binary output, system and skill messages, and compaction records.
 
-Recaps are stored outside session messages, cannot enter future model context, and survive TUI restarts until new input or a revert makes them stale. Multiple simultaneous TUI instances may independently generate the same recap.
+OpenCode stores recaps outside session messages and does not include them in future model context. It keeps them across TUI restarts until new input or a revert marks them stale. If several TUI instances are open, each may generate the same recap.
 
 ## Development
 

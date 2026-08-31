@@ -1,111 +1,54 @@
 # opencode-git-plugin
 
-Git workflow plugin for OpenCode with pi-style interactive TUI UX: `/commit`,
-`/new-branch` and `/pr` generate content with an LLM and apply it with real
-`git`/`gh` commands, with dialogs for guard-rail decisions, a cancellable
-loader while generating/applying, toasts for outcomes, and a footer status
-line while a flow runs.
+OpenCode V2 plugin that adds `/commit`, `/new-branch`, and `/pr`. An LLM writes the commit messages, branch names, and pull request text. The plugin runs the resulting `git` and `gh` commands and adds git safety hooks.
 
-## Entrypoints
+## Install
 
-| Export          | Process    | What it provides                                                                              |
-| --------------- | ---------- | --------------------------------------------------------------------------------------------- |
-| `.` (`index`)   | Server     | Safety hooks, optional headless commands (see below)                                          |
-| `./tui` (`tui`) | TUI (auto) | Interactive slash/palette commands, dialogs, loader with esc-to-cancel, toasts, footer status |
+Install the plugin from GitHub:
 
-The server plugin sets `tui: true`, so the TUI entrypoint loads automatically
-whenever a TUI connects — no extra configuration needed.
+```bash
+opencode2 plugin add 'github:azatakmyradov/opencode-plugins#main::path:packages/git'
+opencode2 plugin list
+```
 
-## Interactive flows (TUI)
+The server entrypoint enables the TUI entrypoint. An install that tracks `main` starts with its cached version and checks GitHub for updates in the background. A downloaded update takes effect the next time the service starts. Restart it now with:
 
-- **`/commit [notes…]`** — refuses nothing silently: on `main`/`master` a
-  selector offers _create a new branch first_, _commit anyway_, or _cancel_;
-  with unstaged changes a confirm asks **Stage all changes before
-  committing?**. Pass `--staged` to keep staging as-is (skips the staging
-  prompt). Generates a commit message from the status + staged diff + recent
-  commit style, then commits.
-- **`/new-branch [notes…]`** — generates a kebab-case branch name from the
-  current work and existing branches, validates it, and switches to it.
-- **`/pr [notes…]`** — from `main`/`master` offers to create a branch first.
-  Generates title/body/base from the diff against the detected base, pushes
-  the branch upstream, and opens the PR (or reports an existing PR URL).
+```bash
+opencode2 service restart
+```
 
-While generating or applying, a compact loader dialog shows progress and `esc`
-aborts: the abort signal propagates into the spawned `git`/`gh`
-processes and the generation request. A `● /commit Committing changes…` line
-appears in the prompt footer status slot, and every outcome arrives as a
-toast (`success` / `error` / `warning` / `info`).
+Use a full commit SHA instead of `main` for a reproducible install that does not update.
 
-### Headless fallback
+## Workflows
 
-The server plugin can also register the same `/commit`, `/new-branch`, `/pr`
-commands as headless versions: no dialogs, refusals are reported as
-messages, and the staging confirm falls back to its default (stage
-everything). This keeps the commands working in `opencode run` and against
-remote servers, but since slash names collide with the interactive TUI
-commands, they are **opt-in** via the `headlessCommands` option (see the
-options table below).
+- `/commit [notes...]` reads the status, staged diff, and recent commit style to write a commit message, then commits. On `main` or `master`, it asks whether to create a branch, commit anyway, or cancel. Unless you pass `--staged`, it also asks whether to stage all changes or commit only the staged changes.
+- `/new-branch [notes...]` uses the current work and existing branches to write a valid kebab-case branch name. It then creates and switches to that branch.
+- `/pr [notes...]` reads the branch diff to write a title and body and choose a base. It pushes the branch upstream and opens a GitHub pull request. On `main` or `master`, it first offers to create a branch.
 
-## Safety hooks (always on)
+The slash menu and command palette list all three commands. While a command runs, OpenCode shows its progress and footer status, then reports the result in a toast. Press `esc` to stop generation and any running `git` or `gh` process.
 
-- Blocks any shell command containing `--no-verify`: git hooks exist for a
-  reason; fix the failure instead of bypassing it.
-- Sets `GIT_EDITOR=true`, `GIT_SEQUENCE_EDITOR=true` and
-  `GIT_MERGE_AUTOEDIT=no` on shell commands invoking `git`, so interactive
-  git editors can never hang the agent.
+## Safety
+
+- Rejects shell commands that contain `--no-verify`, so they cannot bypass git hooks.
+- Sets `GIT_EDITOR=true`, `GIT_SEQUENCE_EDITOR=true`, and `GIT_MERGE_AUTOEDIT=no` for git shell commands. This stops an interactive editor from hanging the agent.
+
+These hooks remain active when you are not using the interactive commands.
 
 ## Options
 
-| Option             | Default        | Meaning                                                                                                       |
-| ------------------ | -------------- | ------------------------------------------------------------------------------------------------------------- |
-| `model`            | server default | `providerID/modelID` used for generation in both entrypoints                                                  |
-| `headlessCommands` | `false`        | Register headless server commands (`commit`, `new-branch`, `pr`); see [Headless fallback](#headless-fallback) |
+| Option             | Default        | Description                                                                                         |
+| ------------------ | -------------- | --------------------------------------------------------------------------------------------------- |
+| `model`            | Server default | Generation model in `providerID/modelID[#variant]` format.                                          |
+| `headlessCommands` | `false`        | Register server versions of `commit`, `new-branch`, and `pr` for `opencode run` and remote clients. |
 
-## Architecture
-
-```
-src/
-  index.ts          server plugin: safety hooks + optional headless commands
-  commands.ts       headless command layer (parseModelRef, createRunner, specs)
-  interceptor.ts    --no-verify block + git editor env
-  core/
-    flow.ts         runFlow: the action pipeline; decisions go through a port
-    ui-port.ts      GitUiPort contract + headlessUiPort (no-UI behavior)
-    git.ts          abort-aware git/gh subprocess wrappers
-    generate.ts     prompt building, JSON extraction/validation, generate()
-  tui.tsx           TUI plugin: keymap layer, footer status slot, busy guard
-  tui/
-    port.tsx        TUI GitUiPort: dialogs, toasts, loader, status store
-    loader.tsx      bordered spinner dialog component (Solid)
-    status.ts       reactive store behind the footer status slot
-```
-
-The core flow is host-agnostic: every interactive decision (confirm, select),
-outcome (notify), and cancellable operation (withLoader) goes through the
-`GitUiPort` interface. The headless and TUI entrypoints are two implementations
-of that port, so the git logic is tested once.
+Headless commands do not show dialogs. They refuse actions that need an interactive decision. When they cannot ask which changes to stage, they stage all changes. They are disabled by default because their slash command names collide with the TUI commands.
 
 ## Development
 
-When loading this workspace directly, configure both source entrypoints. A
-server plugin loaded from `src/index.ts` cannot expose the package-level
-`./tui` export to the CLI automatically:
+For local development, run `bun install`. Add `packages/git/src/index.ts` to `opencode.jsonc` and `packages/git/src/tui.tsx` to the global CLI plugin configuration. OpenCode cannot find the package-level `./tui` export when it loads the server source file directly, so you must add both entries.
 
-```jsonc
-// opencode.jsonc
-{ "plugins": ["/absolute/path/to/packages/git/src/index.ts"] }
-
-// cli.json
-{ "plugins": ["/absolute/path/to/packages/git/src/tui.tsx"] }
+```bash
+bun run --filter opencode-git-plugin check
+bun run --filter opencode-git-plugin test
+bun run check
 ```
-
-Published package installs only need the server plugin entry because OpenCode
-can resolve the package's `./tui` export automatically.
-
-```sh
-bun run check   # tsc --noEmit
-bun run test    # vitest (vp) suite
-```
-
-From the repo root, `vp check` covers formatting, lint and type checks across
-packages.
