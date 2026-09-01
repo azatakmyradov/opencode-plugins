@@ -1,0 +1,62 @@
+{
+  "name": "@azatakmyradov/opencode-external-subagents-plugin",
+  "version": "0.0.0",
+  "description": "Run Claude Code, Codex, and native OpenCode subagents through one tool",
+  "keywords": [
+    "claude-code",
+    "codex",
+    "opencode",
+    "opencode-plugin",
+    "subagents"
+  ],
+  "homepage": "https://github.com/azatakmyradov/opencode-plugins/tree/main/packages/external-subagents",
+  "bugs": "https://github.com/azatakmyradov/opencode-plugins/issues",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/azatakmyradov/opencode-plugins.git",
+    "directory": "packages/external-subagents"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./tui": "./dist/tui.js",
+    "./rpc": "./dist/rpc.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun ../../scripts/build.ts .",
+    "check": "tsc --noEmit",
+    "prepack": "bun run build",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.207",
+    "@opencode-ai/plugin": "0.0.0-beta-18721",
+    "@opencode-ai/schema": "0.0.0-beta-18721",
+    "effect": "4.0.0-rc.112",
+    "zod": "4.1.8"
+  },
+  "peerDependencies": {
+    "@opentui/core": ">=0.5.9",
+    "@opentui/solid": ">=0.5.9",
+    "solid-js": ">=1.9.0"
+  },
+  "peerDependenciesMeta": {
+    "@opentui/core": {
+      "optional": true
+    },
+    "@opentui/solid": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    }
+  }
+}
