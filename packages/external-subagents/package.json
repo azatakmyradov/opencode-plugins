@@ -1,6 +1,6 @@
 {
   "name": "@azatakmyradov/opencode-external-subagents-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Run Claude Code, Codex, and native OpenCode subagents through one tool",
   "keywords": [
     "claude-code",
