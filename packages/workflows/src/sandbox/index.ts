@@ -194,6 +194,22 @@ export function runWorkflowSandbox(options: RunWorkflowSandboxOptions): Promise<
       else resolve(value);
     };
     const onAbort = () => finish(new Error("Workflow was aborted"));
+    const startHeartbeat = () => {
+      heartbeat = setInterval(() => {
+        if (pingSeq - lastPongSeq >= pingMissLimit) {
+          const blockedSeconds = (pingIntervalMs * pingMissLimit) / 1_000;
+          finish(
+            new Error(
+              `Workflow script blocked the sandbox event loop for over ${blockedSeconds}s (e.g. an infinite loop after an await); the run was terminated`,
+            ),
+          );
+          return;
+        }
+        pingSeq++;
+        child.send({ kind: "ping", token, seq: pingSeq }, () => {});
+      }, pingIntervalMs);
+      heartbeat.unref?.();
+    };
 
     options.signal.addEventListener("abort", onAbort, { once: true });
     if (options.signal.aborted) {
@@ -215,6 +231,14 @@ export function runWorkflowSandbox(options: RunWorkflowSandboxOptions): Promise<
         return;
       }
       const kind = envelope.data.kind;
+      if (kind === "ready") {
+        if (heartbeat) {
+          finish(new Error("Workflow sandbox sent a duplicate ready message"));
+          return;
+        }
+        startHeartbeat();
+        return;
+      }
       if (kind === "phase") {
         const message = jsonPayloadSchema.safeParse(raw);
         if (!message.success || message.data.payloadJson.length > 4096) {
@@ -325,23 +349,7 @@ export function runWorkflowSandbox(options: RunWorkflowSandboxOptions): Promise<
       (error) => {
         if (error) {
           finish(error);
-          return;
         }
-        if (finished) return;
-        heartbeat = setInterval(() => {
-          if (pingSeq - lastPongSeq >= pingMissLimit) {
-            const blockedSeconds = (pingIntervalMs * pingMissLimit) / 1_000;
-            finish(
-              new Error(
-                `Workflow script blocked the sandbox event loop for over ${blockedSeconds}s (e.g. an infinite loop after an await); the run was terminated`,
-              ),
-            );
-            return;
-          }
-          pingSeq++;
-          child.send({ kind: "ping", token, seq: pingSeq }, () => {});
-        }, pingIntervalMs);
-        heartbeat.unref?.();
       },
     );
   });

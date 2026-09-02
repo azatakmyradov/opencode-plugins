@@ -193,6 +193,7 @@ process.on("message", (message) => {
     }
     initialized = true;
     token = message.token;
+    send({ kind: "ready" });
     run(message.source, message.argsJson);
     return;
   }
