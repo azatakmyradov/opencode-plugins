@@ -1,6 +1,6 @@
 {
   "name": "@azatakmyradov/opencode-recap-plugin",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Run recaps and suggested next steps for the OpenCode V2 TUI",
   "keywords": [
     "opencode",
