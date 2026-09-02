@@ -13,8 +13,8 @@ import type { Plugin } from "@opencode-ai/plugin/tui";
 import { TextAttributes } from "@opentui/core";
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import type { JSX } from "solid-js";
+import { errorText as failureText } from "../core/error.ts";
 import type { AgentSummary, RunDetail, RunSummary, TranscriptItem } from "../rpc.ts";
-import { errorText as failureText } from "../core/run.ts";
 import * as Format from "./format.ts";
 import type { StatusStore } from "./status.ts";
 

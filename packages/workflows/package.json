@@ -32,7 +32,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "bun ../../scripts/build.ts .",
+    "build": "bun ../../scripts/build.ts . --splitting",
     "check": "tsc --noEmit",
     "prepack": "bun run build",
     "test": "vp test run"

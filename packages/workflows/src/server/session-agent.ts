@@ -15,6 +15,7 @@ import type {
   AgentRequest,
   WorkflowAgentPort,
 } from "../core/agent-port.ts";
+import { errorText } from "../core/error.ts";
 import { emptyUsage } from "../core/model.ts";
 import {
   classifyChildOutcome,
@@ -25,7 +26,6 @@ import {
   usageFromChildMessages,
   type ChildMessage,
 } from "../core/outcome.ts";
-import { errorText } from "../core/run.ts";
 import type { ChildSettleStatus, SessionEventHub } from "./session-events.ts";
 import type { StructuredOutputRegistry } from "./structured-output.ts";
 

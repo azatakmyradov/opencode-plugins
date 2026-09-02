@@ -14,25 +14,15 @@ import { Model, Plugin } from "@opencode-ai/plugin/effect";
 import type { Session } from "@opencode-ai/schema/session";
 import { Effect, Stream, type JsonSchema } from "effect";
 import { z } from "zod";
+import type { WorkflowAgentPort } from "./core/agent-port.ts";
+import { errorText } from "./core/error.ts";
 import { jsonValueSchema, type JsonValue } from "./core/json.ts";
 import type { CatalogModel } from "./core/model-select.ts";
 import { resultJson, type TranscriptEntry, type WorkflowDetails } from "./core/model.ts";
 import { STRUCTURED_OUTPUT_SYSTEM_INSTRUCTION } from "./core/prompt.ts";
 import { pruneWorkflowArtifacts } from "./core/retention.ts";
-import { errorText } from "./core/run.ts";
 import { parseStoredTranscripts, parseStoredWorkflow } from "./core/stored.ts";
-import {
-  createNodeRuntimeResolver,
-  nodeCandidates,
-  NODE_PATH_ENV_VAR,
-  probeNode,
-} from "./sandbox/node-runtime.ts";
-import {
-  createSessionAgentPort,
-  type ChildModelRef,
-  type SessionAgentDeps,
-  type SessionOps,
-} from "./server/session-agent.ts";
+import type { ChildModelRef, SessionAgentDeps, SessionOps } from "./server/session-agent.ts";
 import { createSessionEventHub } from "./server/session-events.ts";
 import {
   parseStoredRunIndex,
@@ -48,9 +38,11 @@ import {
 } from "./server/structured-output.ts";
 import {
   createWorkflowTool,
+  loadWorkflowExecution,
   WORKFLOW_PERMISSION_ACTION,
   WORKFLOW_TOOL_NAME,
   type ActiveRun,
+  type WorkflowToolDeps,
 } from "./server/tool.ts";
 import { WorkflowsRpc, type RunDetail, type RunSummary, type TranscriptItem } from "./rpc.ts";
 
@@ -101,14 +93,21 @@ export default Plugin.define({
         // Artifact cleanup must never prevent the plugin from loading.
       }
 
-      const resolveNode = createNodeRuntimeResolver({
-        candidates: nodeCandidates({
-          override: nodePathOverride,
-          env: process.env[NODE_PATH_ENV_VAR],
-          which: (name) => Bun.which(name) ?? undefined,
-        }),
-        probe: probeNode,
-      });
+      const nodePathEnvironment = process.env.OPENCODE_WORKFLOWS_NODE;
+      const nodeOnPath = Bun.which("node") ?? undefined;
+      let nodeProbePromise: ReturnType<WorkflowToolDeps["resolveNode"]> | undefined;
+      const resolveNode = () =>
+        (nodeProbePromise ??= loadWorkflowExecution().then((execution) => {
+          const resolver = execution.createNodeRuntimeResolver({
+            candidates: execution.nodeCandidates({
+              override: nodePathOverride,
+              env: nodePathEnvironment,
+              which: () => nodeOnPath,
+            }),
+            probe: execution.probeNode,
+          });
+          return resolver();
+        }));
 
       // One event-stream pump feeding the per-session fan-out hub.
       yield* Effect.forkScoped(
@@ -384,7 +383,12 @@ export default Plugin.define({
             runId,
           };
           if (parentModel !== undefined) agentDeps.parentModel = parentModel;
-          return createSessionAgentPort(agentDeps);
+          const portPromise = loadWorkflowExecution().then((execution) =>
+            execution.createSessionAgentPort(agentDeps),
+          );
+          return {
+            run: (request) => portPromise.then((port) => port.run(request)),
+          } satisfies WorkflowAgentPort;
         },
         childSessions,
         activeRuns,

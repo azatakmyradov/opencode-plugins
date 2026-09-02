@@ -5,6 +5,7 @@ import { Glob } from "bun";
 import { createSolidTransformPlugin } from "@opentui/solid/bun-plugin";
 
 const directory = path.resolve(process.argv[2] ?? ".");
+const splitting = process.argv.includes("--splitting");
 const outdir = path.join(directory, "dist");
 const entrypoints: string[] = [];
 for (const entry of ["src/index.ts", "src/tui.tsx", "src/rpc.ts"]) {
@@ -24,6 +25,7 @@ const result = await Bun.build({
   outdir,
   target: "bun",
   format: "esm",
+  splitting,
   packages: "external",
   plugins: [createSolidTransformPlugin()],
 });

@@ -13,15 +13,14 @@ import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import {
-  query,
-  type Options as ClaudeQueryOptions,
-  type SDKAssistantMessage,
-  type SDKCompactBoundaryMessage,
-  type SDKMessage,
-  type SDKResultMessage,
-  type SDKStatusMessage,
-  type SDKUserMessage,
+import type {
+  Options as ClaudeQueryOptions,
+  SDKAssistantMessage,
+  SDKCompactBoundaryMessage,
+  SDKMessage,
+  SDKResultMessage,
+  SDKStatusMessage,
+  SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk";
 import type { Cause, Scope } from "effect";
 import { Effect, Queue, Stream } from "effect";
@@ -51,6 +50,13 @@ type ToolResultBlock = Extract<
 const CLAUDE_CONTEXT_WINDOW = 200_000;
 const INTERRUPT_TIMEOUT_MS = 2_000;
 const PREVIEW_MAX_LENGTH = 4_096;
+
+type ClaudeAgentSdk = typeof import("@anthropic-ai/claude-agent-sdk");
+let claudeAgentSdkPromise: Promise<ClaudeAgentSdk> | undefined;
+
+export function loadClaudeAgentSdk(): Promise<ClaudeAgentSdk> {
+  return (claudeAgentSdkPromise ??= import("@anthropic-ai/claude-agent-sdk"));
+}
 
 const CLAUDE_TOOL_NAMES = new Map<string, string>([
   ["read", "Read"],
@@ -439,8 +445,12 @@ function makeClaudeSession(
     if (task.model) options.model = task.model;
     if (thinkingBudget !== undefined) options.maxThinkingTokens = thinkingBudget;
 
+    const sdk = yield* Effect.tryPromise({
+      try: loadClaudeAgentSdk,
+      catch: (cause) => new SpawnError({ message: boundedError(cause) }),
+    });
     const nativeQuery = yield* Effect.try({
-      try: () => query({ prompt: input, options }),
+      try: () => sdk.query({ prompt: input, options }),
       catch: (cause) => new SpawnError({ message: boundedError(cause) }),
     });
 

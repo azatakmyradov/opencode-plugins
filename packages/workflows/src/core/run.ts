@@ -13,6 +13,7 @@ import {
 } from "../sandbox/index.ts";
 import type { AgentRequest, WorkflowAgentPort } from "./agent-port.ts";
 import type { RunController } from "./controller.ts";
+import { errorText } from "./error.ts";
 import type { JsonValue } from "./json.ts";
 import type { ModelResolution } from "./model-select.ts";
 import { emptyUsage, type AgentRecord, type WorkflowDetails } from "./model.ts";
@@ -21,11 +22,8 @@ export const PREVIEW_LENGTH = 200;
 export const EMIT_INTERVAL_MS = 120;
 const LABEL_MAX_LENGTH = 160;
 const PHASE_MAX_LENGTH = 160;
-const ERROR_MAX_LENGTH = 16 * 1024;
 
-export function errorText(cause: unknown): string {
-  return (cause instanceof Error ? cause.message : String(cause)).slice(0, ERROR_MAX_LENGTH);
-}
+export { errorText };
 
 export interface WorkflowPersistencePort {
   checkpoint(options?: { immediate?: boolean }): void;
