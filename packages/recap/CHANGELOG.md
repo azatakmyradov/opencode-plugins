@@ -1,5 +1,11 @@
 # @azatakmyradov/opencode-recap-plugin
 
+## 0.1.2
+
+### Patch Changes
+
+- 347d98e: Use OpenCode's subdued theme color for secondary recap text.
+
 ## 0.1.1
 
 ### Patch Changes

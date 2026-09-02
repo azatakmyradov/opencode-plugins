@@ -1,5 +1,11 @@
 # @azatakmyradov/opencode-workflows-plugin
 
+## 0.1.2
+
+### Patch Changes
+
+- 347d98e: Start sandbox heartbeat monitoring after the child process is ready, preventing slow startup from being mistaken for a blocked workflow.
+
 ## 0.1.1
 
 ### Patch Changes
