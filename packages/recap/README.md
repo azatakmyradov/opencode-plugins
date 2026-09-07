@@ -23,11 +23,11 @@ Use an exact package version for a reproducible install that does not update.
 
 The plugin generates a recap when a run succeeds, fails, or is interrupted. It ignores child sessions. While generation runs, the prompt footer shows `generating run recap...`.
 
-The recap card contains a summary of up to 2,400 characters and a next step of up to 400 characters. OpenCode stores the latest recap for each root session outside its messages, so the card survives TUI restarts but never enters model context. New user input or a revert removes the old recap and cancels any recap still being generated.
+The recap card contains a summary of up to 2,400 characters and a next step of up to 400 characters. OpenCode stores the latest recap for each root session outside its messages, so the card survives TUI restarts but never enters model context. New user input or a revert removes the old recap and cancels the TUI's wait for a pending recap.
 
 The model request times out after 45 seconds. If the request fails, times out, or returns invalid data, the plugin shows a warning and builds a local fallback from tool names and the last assistant response.
 
-Each open TUI instance handles session events on its own. If several instances are open, each one may request a recap for the same run.
+Each open TUI instance handles session events on its own. The server shares generation requests for the same session, terminal event, and model, and retains up to 128 completed results until the plugin reloads. New input cancels that TUI's wait. The server cancels the model request when no clients are waiting for it.
 
 ## Model
 

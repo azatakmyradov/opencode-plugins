@@ -59,9 +59,14 @@ function collectCommitContext(
 ): Effect.Effect<string, g.GitCommandError> {
   return Effect.gen(function* () {
     if (stageAll) yield* g.stageAll(cwd, { signal });
-    const status = yield* g.porcelainStatus(cwd, { signal });
-    const diff = yield* g.diffCached(cwd, { signal });
-    const log = yield* collectRecentLog(cwd, 10, signal);
+    const [status, diff, log] = yield* Effect.all(
+      [
+        g.porcelainStatus(cwd, { signal }),
+        g.diffCached(cwd, { signal }),
+        collectRecentLog(cwd, 10, signal),
+      ],
+      { concurrency: 3 },
+    );
     return [
       status || "(no changes)",
       "",
@@ -80,8 +85,10 @@ function collectPrContext(
   signal: AbortSignal,
 ): Effect.Effect<string, g.GitCommandError> {
   return Effect.gen(function* () {
-    const diff = yield* g.diffAgainstBase(cwd, base, { signal });
-    const log = yield* collectRecentLog(cwd, 20, signal);
+    const [diff, log] = yield* Effect.all(
+      [g.diffAgainstBase(cwd, base, { signal }), collectRecentLog(cwd, 20, signal)],
+      { concurrency: 2 },
+    );
     return [`Diff against ${base}:`, truncate(diff), "", "Commits:", log].join("\n");
   });
 }
@@ -285,6 +292,15 @@ function runPr(input: FlowInput): Effect.Effect<void, unknown> {
         );
         return;
       }
+    }
+
+    const existing = yield* g.existingPrUrl(cwd);
+    if (Option.isSome(existing)) {
+      yield* ui.notify({
+        message: `Pull request already exists: ${existing.value}`,
+        variant: "info",
+      });
+      return;
     }
 
     const content = yield* ui.withLoader({

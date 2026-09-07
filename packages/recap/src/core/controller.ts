@@ -21,6 +21,8 @@ export interface ControllerDeps {
   messages(sessionID: string): readonly SessionMessageInfo[];
   model(): ModelRef;
   generate(input: {
+    sessionID: string;
+    eventID: string;
     transcript: string;
     model: ModelRef;
   }): Effect.Effect<RunRecap, RecapGenerationError>;
@@ -134,6 +136,8 @@ export const createRecapController = Effect.fn("createRecapController")(function
       const model = deps.model();
       const result = yield* deps
         .generate({
+          sessionID: input.sessionID,
+          eventID: input.eventID,
           transcript: serializeRunTranscript(messages, input.detail),
           model,
         })

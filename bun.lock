@@ -21,7 +21,7 @@
     },
     "packages/external-subagents": {
       "name": "@azatakmyradov/opencode-external-subagents-plugin",
-      "version": "0.0.0",
+      "version": "0.1.1",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "0.3.207",
         "@opencode-ai/plugin": "0.0.0-beta-18721",
@@ -89,6 +89,7 @@
         "@opencode-ai/client": "0.0.0-beta-18721",
         "@opencode-ai/plugin": "0.0.0-beta-18721",
         "effect": "4.0.0-rc.112",
+        "zod": "4.1.8",
       },
       "peerDependencies": {
         "@opentui/core": ">=0.5.9",
@@ -103,7 +104,7 @@
     },
     "packages/save-md": {
       "name": "@azatakmyradov/opencode-save-md-plugin",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@opencode-ai/client": "0.0.0-beta-18721",
         "@opencode-ai/plugin": "0.0.0-beta-18721",
@@ -124,7 +125,7 @@
     },
     "packages/workflows": {
       "name": "@azatakmyradov/opencode-workflows-plugin",
-      "version": "0.0.0",
+      "version": "0.1.1",
       "dependencies": {
         "@opencode-ai/plugin": "0.0.0-beta-18721",
         "@opencode-ai/schema": "0.0.0-beta-18721",

@@ -89,6 +89,7 @@ export default Plugin.define({
     let refreshShouldNotify = false;
     let refreshInFlight: Promise<void> | undefined;
     let disposed = false;
+    const pendingUpdates = new Map<string, ExternalSubagentSummary | undefined>();
 
     function publishInvalidations(): void {
       if (!refreshShouldNotify) return;
@@ -151,6 +152,15 @@ export default Plugin.define({
           }
           if (disposed) return;
           store.replace(next);
+          if (pendingUpdates.size > 0) {
+            store.apply(
+              [...pendingUpdates.keys()],
+              [...pendingUpdates.values()].filter(
+                (run): run is ExternalSubagentSummary => run !== undefined,
+              ),
+            );
+            pendingUpdates.clear();
+          }
           publishInvalidations();
         }
       })().finally(() => {
@@ -185,6 +195,18 @@ export default Plugin.define({
 
     const stopChanged = rpc.events.on("changed", (event) => {
       if (disposed) return;
+      if (event.data.runs !== undefined) {
+        const { handles, runs } = event.data;
+        if (refreshInFlight !== undefined) {
+          for (const handle of handles) pendingUpdates.set(handle, undefined);
+          for (const run of runs) pendingUpdates.set(run.id, run);
+        }
+        store.apply(handles, runs);
+        for (const handle of handles) {
+          for (const listener of listeners) listener(handle);
+        }
+        return;
+      }
       void refreshStore(event.data.handles).catch(() => undefined);
     });
 

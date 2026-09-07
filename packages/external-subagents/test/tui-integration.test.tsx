@@ -655,6 +655,33 @@ function pluginHarness(
 }
 
 describe("external subagent TUI event integration", () => {
+  test("incremental updates avoid list requests and survive an older warm response", async () => {
+    const blocked = deferred<ExternalSubagentSummary[]>();
+    let requests = 0;
+    const harness = pluginHarness(() => {
+      requests++;
+      return blocked.promise;
+    });
+    const cleanup = await tuiPlugin.setup(harness.context);
+    const old = summary("codex:one", 1);
+    const updated = { ...old, preview: "new output" };
+    const state = harness.storageStates.get("runs") as {
+      loaded: boolean;
+      runs: ExternalSubagentSummary[];
+    };
+    try {
+      harness.events.emit("changed", { handles: [old.id], runs: [updated] });
+      expect(state.runs[0]?.preview).toBe("new output");
+      blocked.resolve([old]);
+      for (let attempt = 0; attempt < 100 && !state.loaded; attempt++) await Promise.resolve();
+      expect(state.runs[0]?.preview).toBe("new output");
+      harness.events.emit("changed", { handles: [old.id], runs: [] });
+      expect(state.runs).toEqual([]);
+      expect(requests).toBe(1);
+    } finally {
+      await cleanup?.();
+    }
+  });
   test("restores the originating route when the dashboard closes", async () => {
     const harness = pluginHarness(() => Promise.resolve([]));
     const cleanup = await tuiPlugin.setup(harness.context);

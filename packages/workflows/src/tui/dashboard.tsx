@@ -226,13 +226,38 @@ export function WorkflowsDashboard(props: DashboardProps): JSX.Element {
     return transcriptRows().slice(start, start + viewport());
   });
 
-  async function loadDetail(runId: string): Promise<void> {
-    try {
-      setDetail(await props.port.get(runId));
-      setFailure(undefined);
-    } catch (cause) {
-      setFailure(failureText(cause));
-    }
+  let detailRequest: Promise<void> | undefined;
+  let pendingDetail: string | undefined;
+  let requestedRun: string | undefined;
+  let disposed = false;
+  onCleanup(() => {
+    disposed = true;
+  });
+
+  function loadDetail(runId: string): Promise<void> {
+    requestedRun = runId;
+    pendingDetail = runId;
+    if (detailRequest) return detailRequest;
+    detailRequest = (async () => {
+      while (pendingDetail !== undefined && !disposed) {
+        const id = pendingDetail;
+        pendingDetail = undefined;
+        try {
+          const next = await props.port.get(id);
+          if (disposed || requestedRun !== id || view() === "list") continue;
+          setDetail(next);
+          setFailure(undefined);
+        } catch (cause) {
+          if (!disposed && requestedRun === id && view() !== "list") setFailure(failureText(cause));
+        }
+      }
+    })().finally(() => {
+      detailRequest = undefined;
+      if (pendingDetail !== undefined && !disposed && view() !== "list") {
+        void loadDetail(pendingDetail);
+      }
+    });
+    return detailRequest;
   }
 
   async function refresh(): Promise<void> {
@@ -243,7 +268,7 @@ export function WorkflowsDashboard(props: DashboardProps): JSX.Element {
       setFailure(failureText(cause));
     }
     const current = detail();
-    if (current !== undefined) await loadDetail(current.runId);
+    if (current !== undefined && view() !== "list") await loadDetail(current.runId);
   }
 
   async function openDetail(run: RunSummary): Promise<void> {
@@ -566,7 +591,7 @@ export function WorkflowsDashboard(props: DashboardProps): JSX.Element {
     onCleanup(
       props.port.subscribe((run) => {
         const current = detail();
-        if (current === undefined || current.runId !== run.runId) return;
+        if (view() === "list" || current === undefined || current.runId !== run.runId) return;
         void loadDetail(run.runId);
         void refreshTranscript();
       }),

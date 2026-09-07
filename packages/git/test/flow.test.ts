@@ -1,8 +1,9 @@
-import { describe, expect, test } from "vite-plus/test";
+import { describe, expect, test, vi } from "vite-plus/test";
 import { execFile } from "node:child_process";
 import { appendFile, mkdtemp, writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
+import * as git from "../src/core/git.ts";
 import { runFlow, type FlowDeps } from "../src/core/flow.ts";
 import type { GitUiPort } from "../src/core/ui-port.ts";
 
@@ -19,6 +20,30 @@ const makeRepo = async (branch: string): Promise<string> => {
 const makeDeps = (cwd: string, reply = '{"message": "test: generated message"}'): FlowDeps => ({
   cwd,
   generateText: () => Effect.succeed({ text: reply }),
+});
+
+test("existing PR skips diff collection and model generation", async () => {
+  const branch = vi.spyOn(git, "currentBranch").mockReturnValue(Effect.succeed("feature"));
+  const existing = vi
+    .spyOn(git, "existingPrUrl")
+    .mockReturnValue(Effect.succeed(Option.some("https://example.com/pr/1")));
+  const diff = vi.spyOn(git, "diffAgainstBase");
+  const generateText = vi.fn(() => Effect.succeed({ text: "unused" }));
+  const port = scriptedPort();
+  try {
+    await Effect.runPromise(
+      runFlow({ action: "pr", promptText: "", deps: { cwd: ".", generateText }, ui: port.ui }),
+    );
+    expect(generateText).not.toHaveBeenCalled();
+    expect(diff).not.toHaveBeenCalled();
+    expect(port.events).toContain(
+      "notify:info:Pull request already exists: https://example.com/pr/1",
+    );
+  } finally {
+    branch.mockRestore();
+    existing.mockRestore();
+    diff.mockRestore();
+  }
 });
 
 interface ScriptedPort {

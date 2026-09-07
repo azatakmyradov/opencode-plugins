@@ -319,6 +319,7 @@ export default Plugin.define({
 
       let rpcUpdateTimer: ReturnType<typeof setTimeout> | undefined;
       const changedHandles = new Set<string>();
+      let resync = false;
       let previousStatuses = new Map(
         manager.view.list().map((snapshot) => [snapshot.id, snapshot.status] as const),
       );
@@ -326,20 +327,37 @@ export default Plugin.define({
         pruneRunRecords();
         const handles = [...changedHandles];
         changedHandles.clear();
-        Effect.runFork(rpc.events.emit("changed", { handles }).pipe(Effect.ignore));
+        const summaries = resync
+          ? undefined
+          : handles.flatMap((id) => {
+              const snapshot = manager.view.get(id);
+              const record = runs.get(id);
+              return snapshot && record
+                ? [summaryOf(snapshot, record.parentSessionID, record.description)]
+                : [];
+            });
+        resync = false;
+        Effect.runFork(
+          rpc.events
+            .emit("changed", { handles, ...(summaries === undefined ? {} : { runs: summaries }) })
+            .pipe(Effect.ignore),
+        );
       };
       const unsubscribe = manager.view.subscribe((handle) => {
         if (handle !== undefined) changedHandles.add(handle);
-        const snapshots = manager.view.list();
+        else resync = true;
+        const snapshot = handle === undefined ? undefined : manager.view.get(handle);
+        const snapshots =
+          handle === undefined ? manager.view.list() : snapshot === undefined ? [] : [snapshot];
         const settled = snapshots.filter((snapshot) => {
           const previous = previousStatuses.get(snapshot.id);
           return (
             previous !== undefined && isActiveStatus(previous) && !isActiveStatus(snapshot.status)
           );
         });
-        previousStatuses = new Map(
-          snapshots.map((snapshot) => [snapshot.id, snapshot.status] as const),
-        );
+        if (handle === undefined) previousStatuses.clear();
+        else if (snapshot === undefined) previousStatuses.delete(handle);
+        for (const snapshot of snapshots) previousStatuses.set(snapshot.id, snapshot.status);
         if (settled.length > 0) {
           if (rpcUpdateTimer !== undefined) clearTimeout(rpcUpdateTimer);
           rpcUpdateTimer = undefined;

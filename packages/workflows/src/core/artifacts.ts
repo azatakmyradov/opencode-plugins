@@ -1,4 +1,6 @@
 import * as path from "node:path";
+import { mkdir, writeFile, rename, unlink } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import type { TranscriptEntry, WorkflowDetails } from "./model.ts";
 import type { WorkflowPersistencePort } from "./run.ts";
 import { safeStringify, truncateUtf8, writeFileAtomic } from "./serialization.ts";
@@ -70,79 +72,112 @@ export function boundedArtifactTranscript(
   return [initial, marker, ...tail];
 }
 
-function writeRunFile(runDir: string, name: string, content: string): void {
-  writeFileAtomic(path.join(runDir, name), content);
-}
-
-export function persistWorkflowJson(runDir: string, details: WorkflowDetails): void {
+function workflowFiles(details: WorkflowDetails): Map<string, string> {
+  const files = new Map<string, string>();
   const transcripts = Object.fromEntries(
     details.agents.map((agent) => [agent.index, boundedArtifactTranscript(agent.transcript)]),
   );
-  writeRunFile(
-    runDir,
-    "transcripts.json",
-    safeStringify(transcripts, { maxBytes: 2 * 1024 * 1024 }),
-  );
+  files.set("transcripts.json", safeStringify(transcripts, { maxBytes: 2 * 1024 * 1024 }));
   const compact: WorkflowDetails = {
     ...details,
     agents: details.agents.map((agent) => ({ ...agent, transcript: [] })),
   };
   if (details.result !== undefined) {
-    writeRunFile(runDir, "result.json", safeStringify(details.result, { maxBytes: 1024 * 1024 }));
+    files.set("result.json", safeStringify(details.result, { maxBytes: 1024 * 1024 }));
     compact.result = "[stored in result.json]";
     compact.resultArtifact = "result.json";
   }
   compact.transcriptArtifact = "transcripts.json";
-  writeRunFile(runDir, "workflow.json", safeStringify(compact, { maxBytes: 1024 * 1024 }));
+  files.set("workflow.json", safeStringify(compact, { maxBytes: 1024 * 1024 }));
+  return files;
 }
 
-/** Coalesce live checkpoints while keeping final persistence synchronous. */
+export function persistWorkflowJson(runDir: string, details: WorkflowDetails): void {
+  for (const [name, content] of workflowFiles(details)) {
+    writeFileAtomic(path.join(runDir, name), content);
+  }
+}
+
+/** Serialize before awaiting so each checkpoint is a consistent snapshot. */
+function asyncWriter(): (runDir: string, details: WorkflowDetails) => Promise<void> {
+  const written = new Map<string, string>();
+  return async (runDir, details) => {
+    const files = workflowFiles(details);
+    await mkdir(runDir, { recursive: true });
+    for (const [name, content] of files) {
+      if (written.get(name) === content) continue;
+      const destination = path.join(runDir, name);
+      const temporary = `${destination}.${randomUUID()}.tmp`;
+      try {
+        await writeFile(temporary, content, { encoding: "utf8", mode: 0o600 });
+        await rename(temporary, destination);
+        written.set(name, content);
+      } catch (error) {
+        await unlink(temporary).catch(() => undefined);
+        throw error;
+      }
+    }
+  };
+}
+
+/** One writer per run; checkpoints arriving during a write collapse into the next save. */
 export function createWorkflowPersistence(
   runDir: string,
   details: WorkflowDetails,
   options: {
     intervalMs?: number;
-    persist?: (runDir: string, details: WorkflowDetails) => void;
+    persist?: (runDir: string, details: WorkflowDetails) => void | Promise<void>;
   } = {},
 ): WorkflowPersistencePort {
   const intervalMs = Math.max(0, options.intervalMs ?? WORKFLOW_CHECKPOINT_INTERVAL_MS);
-  const persist = options.persist ?? persistWorkflowJson;
+  const persist = options.persist ?? asyncWriter();
   let lastPersistedAt = Date.now();
   let dirty = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let inFlight: Promise<void> | undefined;
+  let flushing = false;
 
-  const savePending = () => {
+  const savePending = async () => {
     timer = undefined;
-    if (!dirty) return;
+    if (!dirty || inFlight) return;
+    dirty = false;
+    // Install the promise before invoking the writer, including synchronous test writers.
+    inFlight = Promise.resolve().then(() => persist(runDir, details));
     try {
-      persist(runDir, details);
-      dirty = false;
+      await inFlight;
       lastPersistedAt = Date.now();
     } catch {
-      // Final flush retries and reports persistence failures synchronously.
+      // Final flush retries and reports persistence failures.
+      dirty = true;
+    } finally {
+      inFlight = undefined;
+      if (dirty && !flushing) timer = setTimeout(() => void savePending(), intervalMs);
     }
   };
 
   return {
     checkpoint(checkpointOptions: { immediate?: boolean } = {}) {
       dirty = true;
+      if (flushing || inFlight) return;
       if (checkpointOptions.immediate) {
         if (timer) clearTimeout(timer);
-        savePending();
+        void savePending();
         return;
       }
       if (timer) return;
       const delay = Math.max(0, intervalMs - (Date.now() - lastPersistedAt));
       if (delay === 0) {
-        savePending();
+        void savePending();
         return;
       }
-      timer = setTimeout(savePending, delay);
+      timer = setTimeout(() => void savePending(), delay);
     },
-    flush() {
+    async flush() {
+      flushing = true;
       if (timer) clearTimeout(timer);
       timer = undefined;
-      persist(runDir, details);
+      await inFlight?.catch(() => undefined);
+      await persist(runDir, details);
       dirty = false;
       lastPersistedAt = Date.now();
     },

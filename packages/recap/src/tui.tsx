@@ -6,7 +6,8 @@ import {
   RecapControllerService,
   type StoredRecap,
 } from "./core/controller.ts";
-import { RecapGenerationError, summarizeRun, type ModelRef } from "./core/summarizer.ts";
+import { RecapGenerationError, type ModelRef } from "./core/summarizer.ts";
+import { RecapRpc } from "./rpc.ts";
 import { assistantContentRowCount, InlineRecap } from "./tui/inline.tsx";
 
 const DEFAULT_MODEL: ModelRef = {
@@ -27,6 +28,7 @@ function errorMessage(error: unknown): string {
 export default Plugin.define({
   id: "recap",
   setup(context) {
+    const rpc = context.client.rpc(RecapRpc);
     const [state, updateState] = context.storage.store<RecapState>("state", {
       initial: { model: DEFAULT_MODEL, recaps: {} },
     });
@@ -102,23 +104,19 @@ export default Plugin.define({
         model() {
           return { ...state.model };
         },
-        generate({ transcript, model }) {
-          return summarizeRun({
-            transcript,
-            model,
-            generate(request) {
-              return Effect.tryPromise({
-                try: (signal) =>
-                  context.client.generate
-                    .text({ prompt: request.prompt, model: request.model }, { signal })
-                    .then((result) => result.text),
-                catch: (error) =>
-                  new RecapGenerationError({
-                    reason: "request",
-                    message: `The recap model request failed. ${errorMessage(error)}`,
-                  }),
-              });
-            },
+        generate(input) {
+          const location = context.location ?? context.data.location.default();
+          return Effect.tryPromise({
+            try: (signal) =>
+              rpc.generate(input, {
+                signal,
+                location: { directory: location.directory, workspace: location.workspaceID },
+              }),
+            catch: (error) =>
+              new RecapGenerationError({
+                reason: "request",
+                message: `The recap model request failed. ${errorMessage(error)}`,
+              }),
           });
         },
         persist(recap, sessionID) {

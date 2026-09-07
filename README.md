@@ -49,7 +49,7 @@ The recap plugin shows only the latest recap, directly after the completed assis
 
 The plugin sends up to 48 KB of text from the current run to the selected provider. This may include tool arguments, textual tool results, and shell output. The plugin tries to redact secrets, but redaction is not a security boundary. It excludes reasoning, file content, binary output, system and skill messages, and compaction records.
 
-OpenCode stores recaps outside session messages and does not include them in future model context. It keeps them across TUI restarts until new input or a revert marks them stale. If several TUI instances are open, each may generate the same recap.
+OpenCode stores recaps outside session messages and does not include them in future model context. It keeps them across TUI restarts until new input or a revert marks them stale. Connected TUI instances share server-side generation for the same terminal event and model. The server retains up to 128 completed generation results until the plugin reloads.
 
 ## MCP toggles
 

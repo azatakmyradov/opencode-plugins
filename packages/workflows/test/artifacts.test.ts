@@ -123,7 +123,9 @@ test("workflow checkpoints throttle updates and support immediate/final flushes"
   const snapshots: WorkflowDetails[] = [];
   const persistence = createWorkflowPersistence("fixture", details, {
     intervalMs: 15,
-    persist: (_runDir, current) => snapshots.push(structuredClone(current)),
+    persist: (_runDir, current) => {
+      snapshots.push(structuredClone(current));
+    },
   });
 
   details.currentPhase = "Scan";
@@ -138,14 +140,66 @@ test("workflow checkpoints throttle updates and support immediate/final flushes"
 
   details.status = "completed";
   persistence.checkpoint({ immediate: true });
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(snapshots.length).toBe(2);
   expect(snapshots[1]?.status).toBe("completed");
 
   details.finishedAt = 3;
-  persistence.flush();
+  await persistence.flush();
   expect(snapshots.length).toBe(3);
   expect(snapshots[2]?.finishedAt).toBe(3);
 
   await new Promise((resolve) => setTimeout(resolve, 20));
   expect(snapshots.length).toBe(3);
+});
+
+test("final flush waits for a slow checkpoint and writes the latest state without overlap", async () => {
+  const details = workflowDetails();
+  let release!: () => void;
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const states: string[] = [];
+  let writing = false;
+  const persistence = createWorkflowPersistence("fixture", details, {
+    persist: async (_directory, current) => {
+      expect(writing).toBe(false);
+      writing = true;
+      states.push(current.status);
+      if (states.length === 1) await blocked;
+      writing = false;
+    },
+  });
+  persistence.checkpoint({ immediate: true });
+  await Promise.resolve();
+  details.currentPhase = "Latest";
+  persistence.checkpoint({ immediate: true });
+  details.status = "completed";
+  const flushed = persistence.flush();
+  expect(states).toEqual(["running"]);
+  release();
+  await flushed;
+  expect(states).toEqual(["running", "completed"]);
+});
+
+test("asynchronous persistence flush writes readable final artifacts", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "workflows-async-artifacts-"));
+  try {
+    const details = workflowDetails();
+    const persistence = createWorkflowPersistence(directory, details);
+    persistence.checkpoint({ immediate: true });
+    details.status = "completed";
+    details.result = { done: true };
+    await persistence.flush();
+    expect(JSON.parse(readFileSync(join(directory, "result.json"), "utf8"))).toEqual({
+      done: true,
+    });
+    expect(
+      persistedWorkflowSchema.parse(
+        JSON.parse(readFileSync(join(directory, "workflow.json"), "utf8")),
+      ).result,
+    ).toBe("[stored in result.json]");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

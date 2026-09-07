@@ -14,6 +14,7 @@ export interface StatusStore {
   readonly state: ExternalSubagentsRuntime;
   replace(runs: readonly ExternalSubagentSummary[]): void;
   upsert(run: ExternalSubagentSummary): void;
+  apply(handles: readonly string[], runs: readonly ExternalSubagentSummary[]): void;
   select(handle: string | undefined): void;
 }
 
@@ -44,6 +45,15 @@ export function createStatusStore(storage: Plugin.Context["storage"]): StatusSto
     },
     upsert(run) {
       update((draft) => replaceRuns(draft, upsertSubagent(draft.runs, run)));
+    },
+    apply(handles, runs) {
+      const changed = new Set(handles);
+      update((draft) =>
+        replaceRuns(
+          draft,
+          sortSubagents([...draft.runs.filter((run) => !changed.has(run.id)), ...runs]),
+        ),
+      );
     },
     select(handle) {
       update((draft) => {

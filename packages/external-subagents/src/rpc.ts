@@ -126,7 +126,12 @@ export const ExternalSubagentsRpc = Rpc.define({
     },
   },
   events: {
-    changed: { schema: z.object({ handles: z.array(z.string()) }) },
+    changed: {
+      schema: z.object({
+        handles: z.array(z.string()),
+        runs: z.array(ExternalSubagentSummary).optional(),
+      }),
+    },
     settled: { schema: runEvent },
   },
 });

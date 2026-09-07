@@ -27,7 +27,7 @@ export { errorText };
 
 export interface WorkflowPersistencePort {
   checkpoint(options?: { immediate?: boolean }): void;
-  flush(): void;
+  flush(): void | Promise<void>;
 }
 
 export interface ExecuteWorkflowRunOptions {
@@ -216,7 +216,7 @@ export async function executeWorkflowRun(options: ExecuteWorkflowRunOptions): Pr
   details.status = status;
   details.finishedAt = now();
   try {
-    persistence.flush();
+    await persistence.flush();
   } catch (error) {
     details.status = "failed";
     details.error = `Artifact persistence failed: ${errorText(error)}`;
