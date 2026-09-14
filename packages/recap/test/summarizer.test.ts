@@ -3,6 +3,13 @@ import { describe, expect, it } from "vite-plus/test";
 import { parseRecapResponse, RecapGenerationError, summarizeRun } from "../src/core/summarizer.ts";
 
 describe("recap summarizer", () => {
+  it("accepts a recap with no remaining action", () => {
+    expect(Effect.runSync(parseRecapResponse('{"recap":"Fixed refresh.","next":""}'))).toEqual({
+      recap: "Fixed refresh.",
+      next: "",
+    });
+  });
+
   it("extracts strict JSON and strips terminal controls", () => {
     expect(
       Effect.runSync(

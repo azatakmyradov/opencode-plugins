@@ -1,5 +1,5 @@
 import type { SessionMessageInfo } from "@opencode-ai/client";
-import type { RunRecap } from "./summarizer.ts";
+import { stripTerminalControls, type RunRecap } from "./summarizer.ts";
 
 export const TOOL_ARGUMENT_MAX_BYTES = 2_000;
 export const TOOL_RESULT_MAX_BYTES = 5_000;
@@ -184,7 +184,6 @@ export function buildFallbackRecap(
   messages: readonly SessionMessageInfo[],
   outcome = "completed",
 ): RunRecap {
-  const tools: string[] = [];
   let final = "";
 
   for (const message of messages) {
@@ -193,28 +192,31 @@ export function buildFallbackRecap(
     }
 
     for (const part of message.content) {
-      if (part.type === "tool") {
-        tools.push(part.name);
-      }
       if (part.type === "text" && part.text.trim()) {
         final = redactSecrets(part.text.trim());
       }
     }
   }
 
-  const names = [...new Set(tools)];
-  let activity = "";
-  if (names.length) {
-    const toolCallLabel = tools.length === 1 ? "tool call" : "tool calls";
-    activity = ` The run used ${tools.length} ${toolCallLabel} across ${names.join(", ")}.`;
-  }
-
-  const result = final
-    ? ` ${capped(final.replace(/\s+/g, " "), 700, "final response capped")}`
-    : "";
+  const excerpt = stripTerminalControls(final)
+    .split(/\n\s*\n/)[0]!
+    .replace(/\*\*|`/g, "")
+    .trim();
+  const result =
+    excerpt.length <= 360
+      ? excerpt
+      : `${excerpt
+          .slice(0, 357)
+          .replace(/\s+\S*$/, "")
+          .trimEnd()}...`;
+  const status = `Run ${outcome}.`;
   return {
-    recap: `The main-agent run ${outcome}.${activity}${result}`.trim(),
-    next: "Review the completed work above and continue if anything remains.",
+    recap: result
+      ? outcome === "completed" || outcome === "succeeded"
+        ? result
+        : `${status}\n${result}`
+      : status,
+    next: "",
   };
 }
 

@@ -32,8 +32,8 @@ export interface SummarizeRunOptions {
   readonly timeoutMs?: number;
 }
 
-export const RECAP_MAX_LENGTH = 2_400;
-export const NEXT_MAX_LENGTH = 400;
+export const RECAP_MAX_LENGTH = 500;
+export const NEXT_MAX_LENGTH = 120;
 
 const RecapResponse = Schema.Struct({
   recap: Schema.String,
@@ -93,7 +93,7 @@ export const parseRecapResponse = Effect.fn("parseRecapResponse")(function* (
 
   const recap = clean(decoded.recap, RECAP_MAX_LENGTH);
   const next = clean(decoded.next.replace(/^next\s*:\s*/i, ""), NEXT_MAX_LENGTH);
-  if (!recap || !next) {
+  if (!recap) {
     return yield* malformedResponse();
   }
   return { recap, next };

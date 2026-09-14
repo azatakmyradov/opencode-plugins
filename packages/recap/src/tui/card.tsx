@@ -16,11 +16,12 @@ export function RecapCard(props: RecapCardProps): JSX.Element {
   return (
     <box flexDirection="column" marginTop={1} paddingLeft={3}>
       <text fg={props.theme.text.subdued}>
-        <b>Summary:</b>
+        <b>{props.recap.fallback ? "Recap · excerpt" : "Recap"}</b>
       </text>
       <text fg={props.theme.text.default}>{props.recap.recap}</text>
-      <text fg={props.theme.text.subdued}>{`Next: ${props.recap.next}`}</text>
-      {props.recap.fallback ? <text fg={props.theme.text.subdued}>Local fallback</text> : null}
+      {props.recap.next ? (
+        <text fg={props.theme.text.subdued}>{`Next: ${props.recap.next}`}</text>
+      ) : null}
     </box>
   );
 }

@@ -81,6 +81,38 @@ describe("run transcript", () => {
       }),
     ]);
     expect(fallback.recap).toContain("[REDACTED]");
-    expect(fallback.next).toBeTruthy();
+    expect(fallback.next).toBe("");
+  });
+
+  it("keeps the opening paragraph readable without tool statistics or copied details", () => {
+    const fallback = buildFallbackRecap([
+      message({
+        type: "assistant",
+        content: [
+          { type: "tool", name: "shell" },
+          {
+            type: "text",
+            text: "**Fixed refresh.**\nTests passed.\n\nImplementation details follow.",
+          },
+        ],
+      }),
+    ]);
+    expect(fallback).toEqual({ recap: "Fixed refresh.\nTests passed.", next: "" });
+  });
+
+  it("bounds long excerpts and preserves a failed run's status", () => {
+    const fallback = buildFallbackRecap(
+      [
+        message({
+          type: "assistant",
+          content: [{ type: "text", text: "More details. ".repeat(100) }],
+        }),
+      ],
+      "failed",
+    );
+    expect(fallback.recap).toMatch(/^Run failed\.\n/);
+    expect(fallback.recap.length).toBeLessThanOrEqual(372);
+    expect(fallback.recap).toMatch(/\.\.\.$/);
+    expect(fallback.recap).not.toContain("capped");
   });
 });
