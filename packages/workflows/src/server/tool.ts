@@ -1,4 +1,4 @@
-import { Tool } from "@opencode-ai/schema/tool";
+import { Tool } from "@opencode/schema/tool";
 import { Effect } from "effect";
 import { z } from "zod";
 import type { WorkflowAgentPort } from "../core/agent-port.ts";

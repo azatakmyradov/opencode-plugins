@@ -1,4 +1,4 @@
-import type { Plugin } from "@opencode-ai/plugin/tui";
+import type { Plugin } from "@opencode/plugin/tui";
 import { describe, expect, test } from "vite-plus/test";
 import type { ExternalSubagentSummary } from "../src/rpc.ts";
 import { createStatusStore } from "../src/tui/status.ts";

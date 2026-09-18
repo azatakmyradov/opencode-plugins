@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { Plugin } from "@opencode-ai/plugin/effect";
+import { Plugin } from "@opencode/plugin/effect";
 import { createToggleController } from "./core.ts";
 import { McpToggleRpc } from "./rpc.ts";
 

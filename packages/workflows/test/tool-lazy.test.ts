@@ -1,4 +1,4 @@
-import type { Tool } from "@opencode-ai/schema/tool";
+import type { Tool } from "@opencode/schema/tool";
 import { Effect } from "effect";
 import { expect, test } from "vite-plus/test";
 import {

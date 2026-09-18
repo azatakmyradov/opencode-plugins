@@ -1,7 +1,7 @@
-import type { ToolDraft } from "@opencode-ai/plugin/effect/tool";
-import type { SkillDraft } from "@opencode-ai/plugin/effect/skill";
-import type { Skill } from "@opencode-ai/schema/skill";
-import { Tool } from "@opencode-ai/schema/tool";
+import type { ToolEditor } from "@opencode/plugin/effect/tool";
+import type { SkillEditor } from "@opencode/plugin/effect/skill";
+import type { Skill } from "@opencode/schema/skill";
+import { Tool } from "@opencode/schema/tool";
 import { Effect, Schema } from "effect";
 import { describe, expect, test } from "vite-plus/test";
 import plugin from "../src/index.ts";
@@ -22,13 +22,14 @@ const NativeOutput = Schema.Struct({
 
 interface TestSkillDomain {
   transform(
-    callback: (draft: SkillDraft) => void,
+    callback: (draft: SkillEditor) => void,
   ): Effect.Effect<{ readonly dispose: Effect.Effect<void> }>;
 }
 
 function skillDomain(skills: Skill.Info[]): TestSkillDomain {
-  const draft: SkillDraft = {
+  const draft: SkillEditor = {
     list: () => skills,
+    get: (id) => skills.find((skill) => skill.id === id),
     add: (skill) => skills.push(skill),
     update: () => undefined,
     remove: () => undefined,
@@ -66,12 +67,13 @@ describe("subagent tool wrapper", () => {
       },
     };
     const registered: { value?: Tool.Info } = {};
-    const draft: ToolDraft = {
+    const draft: ToolEditor = {
       list: () => [native],
       get: (id) => (id === "subagent" ? native : undefined),
       add: (tool) => {
         registered.value = tool;
       },
+      namespace: () => undefined,
       update: () => undefined,
       remove: () => undefined,
     };
@@ -101,7 +103,7 @@ describe("subagent tool wrapper", () => {
       },
       skill: skillDomain(skills),
       tool: {
-        transform: (callback: (input: ToolDraft) => void) =>
+        transform: (callback: (input: ToolEditor) => void) =>
           Effect.sync(() => {
             callback(draft);
             return { dispose: Effect.void };
@@ -183,12 +185,13 @@ describe("subagent tool wrapper", () => {
       execute: () => Effect.die("native path should not run"),
     };
     const registered: { value?: Tool.Info } = {};
-    const draft: ToolDraft = {
+    const draft: ToolEditor = {
       list: () => [native],
       get: (id) => (id === "subagent" ? native : undefined),
       add: (tool) => {
         registered.value = tool;
       },
+      namespace: () => undefined,
       update: () => undefined,
       remove: () => undefined,
     };
@@ -216,7 +219,7 @@ describe("subagent tool wrapper", () => {
       },
       skill: skillDomain(skills),
       tool: {
-        transform: (callback: (input: ToolDraft) => void) =>
+        transform: (callback: (input: ToolEditor) => void) =>
           Effect.sync(() => {
             callback(draft);
             return { dispose: Effect.void };

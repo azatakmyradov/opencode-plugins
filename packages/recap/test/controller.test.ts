@@ -1,4 +1,4 @@
-import type { SessionMessageInfo } from "@opencode-ai/client";
+import type { SessionMessageInfo } from "@opencode/client";
 import { Deferred, Effect, ManagedRuntime } from "effect";
 import { describe, expect, it, vi } from "vite-plus/test";
 import {

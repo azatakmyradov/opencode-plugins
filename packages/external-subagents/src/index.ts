@@ -1,6 +1,6 @@
-import { Plugin } from "@opencode-ai/plugin/effect";
-import type { Session } from "@opencode-ai/schema/session";
-import { Tool } from "@opencode-ai/schema/tool";
+import { Plugin } from "@opencode/plugin/effect";
+import type { Session } from "@opencode/schema/session";
+import { Tool } from "@opencode/schema/tool";
 import { Effect, Schema } from "effect";
 import { z } from "zod";
 import {

@@ -1,4 +1,4 @@
-import type { Plugin } from "@opencode-ai/plugin/tui";
+import type { Plugin } from "@opencode/plugin/tui";
 import type { ExternalSubagentSummary } from "../rpc.ts";
 import { queuedCount, runningCount, sortSubagents, upsertSubagent } from "./format.ts";
 

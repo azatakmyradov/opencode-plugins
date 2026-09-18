@@ -1,4 +1,4 @@
-import { Plugin } from "@opencode-ai/plugin/tui";
+import { Plugin } from "@opencode/plugin/tui";
 import { Cause, Effect, Option, Semaphore } from "effect";
 import { RpcFailure, SaveMdRpc, SaveMdRpcFailure } from "./rpc.ts";
 
@@ -79,7 +79,6 @@ export default Plugin.define({
 
       const location = {
         directory: session.location.directory,
-        workspace: session.location.workspaceID,
       };
       const result = yield* Effect.tryPromise({
         try: (signal) =>

@@ -1,4 +1,4 @@
-import type { Plugin } from "@opencode-ai/plugin/tui";
+import type { Plugin } from "@opencode/plugin/tui";
 import { createRoot } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 import { describe, expect, test, vi } from "vite-plus/test";

@@ -1,6 +1,6 @@
-import type { Session } from "@opencode-ai/schema/session";
+import type { Session } from "@opencode/schema/session";
 import { Cause, Effect, Schema } from "effect";
-import { Plugin } from "@opencode-ai/plugin/effect";
+import { Plugin } from "@opencode/plugin/effect";
 import { saveLatestAssistant } from "./core.ts";
 import { SaveMdRpc } from "./rpc.ts";
 

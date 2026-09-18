@@ -1,5 +1,5 @@
 import { createSignal, onCleanup, onMount } from "solid-js";
-import type { ResolvedTheme } from "@opencode-ai/theme/tui";
+import type { ResolvedTheme } from "@opencode/theme/tui";
 import type { LoaderStage } from "../core/ui-port.ts";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];

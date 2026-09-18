@@ -1,4 +1,4 @@
-import type { Plugin } from "@opencode-ai/plugin/tui";
+import type { Plugin } from "@opencode/plugin/tui";
 import { TextAttributes } from "@opentui/core";
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import type { JSX } from "solid-js";

@@ -6,7 +6,7 @@
  * `WorkflowsRpc` contract and its progress/settled events.
  */
 
-import { Plugin } from "@opencode-ai/plugin/tui";
+import { Plugin } from "@opencode/plugin/tui";
 import { createSignal, Show } from "solid-js";
 import type { JSX } from "solid-js";
 import { z } from "zod";

@@ -1,4 +1,4 @@
-import type { Plugin } from "@opencode-ai/plugin/tui";
+import type { Plugin } from "@opencode/plugin/tui";
 import type { JSX } from "solid-js";
 import type { StoredRecap } from "../core/controller.ts";
 

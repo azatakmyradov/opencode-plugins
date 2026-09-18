@@ -1,7 +1,7 @@
 import { access, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import type { SessionMessage } from "@opencode-ai/schema/session-message";
+import type { SessionMessage } from "@opencode/schema/session-message";
 import { DateTime, Effect } from "effect";
 import { describe, expect, it } from "vite-plus/test";
 import {

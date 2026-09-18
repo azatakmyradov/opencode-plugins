@@ -1,4 +1,4 @@
-import type { SessionMessageInfo } from "@opencode-ai/client";
+import type { SessionMessageInfo } from "@opencode/client";
 import { stripTerminalControls, type RunRecap } from "./summarizer.ts";
 
 export const TOOL_ARGUMENT_MAX_BYTES = 2_000;

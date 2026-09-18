@@ -1,4 +1,4 @@
-import type { SessionMessageInfo } from "@opencode-ai/client";
+import type { SessionMessageInfo } from "@opencode/client";
 import { describe, expect, it } from "vite-plus/test";
 import {
   buildFallbackRecap,

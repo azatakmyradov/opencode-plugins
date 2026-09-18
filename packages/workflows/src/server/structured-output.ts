@@ -8,7 +8,7 @@
  * loop the way pi's structured_output did.
  */
 
-import { Tool } from "@opencode-ai/schema/tool";
+import { Tool } from "@opencode/schema/tool";
 import { Effect } from "effect";
 import { z } from "zod";
 import { jsonValueSchema, type JsonValue } from "../core/json.ts";

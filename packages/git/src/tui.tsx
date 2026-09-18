@@ -1,6 +1,6 @@
 import { Show } from "solid-js";
 import { Effect } from "effect";
-import { Plugin } from "@opencode-ai/plugin/tui";
+import { Plugin } from "@opencode/plugin/tui";
 import { runFlow } from "./core/flow.ts";
 import type { Action } from "./core/generate.ts";
 import type { LoaderStage } from "./core/ui-port.ts";

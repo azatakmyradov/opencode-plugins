@@ -1,6 +1,6 @@
 import { Cause, Effect } from "effect";
-import { Model, Plugin } from "@opencode-ai/plugin/effect";
-import type { Session } from "@opencode-ai/schema/session";
+import { Model, Plugin } from "@opencode/plugin/effect";
+import type { Session } from "@opencode/schema/session";
 import { applyGitEditorEnv, BLOCK_REASON, shouldBlockNoVerify } from "./interceptor.ts";
 import { commandSpecs, parseModelRef, type CommandDeps } from "./commands.ts";
 import { GitRpc } from "./rpc.ts";

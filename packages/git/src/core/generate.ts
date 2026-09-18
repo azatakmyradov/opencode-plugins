@@ -1,5 +1,5 @@
 import { Cause, Data, Effect, Schema } from "effect";
-import { Model } from "@opencode-ai/schema/model";
+import { Model } from "@opencode/schema/model";
 
 /** A provider/model pair, structural so both the server and TUI can build one. */
 export type ModelRef = {

@@ -7,7 +7,7 @@
 
 import { randomBytes } from "node:crypto";
 import * as path from "node:path";
-import { Tool } from "@opencode-ai/schema/tool";
+import { Tool } from "@opencode/schema/tool";
 import { Effect } from "effect";
 import { createWorkflowPersistence, persistWorkflowJson } from "../core/artifacts.ts";
 import { RunController } from "../core/controller.ts";

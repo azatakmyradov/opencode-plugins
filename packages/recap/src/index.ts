@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { Plugin } from "@opencode-ai/plugin";
+import { Plugin } from "@opencode/plugin";
 import { generationCache } from "./core/cache.ts";
 import { summarizeRun, RecapGenerationError, type RunRecap } from "./core/summarizer.ts";
 import { RecapRpc } from "./rpc.ts";

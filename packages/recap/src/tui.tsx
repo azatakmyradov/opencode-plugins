@@ -1,4 +1,4 @@
-import { Plugin } from "@opencode-ai/plugin/tui";
+import { Plugin } from "@opencode/plugin/tui";
 import { Cause, Effect, ManagedRuntime } from "effect";
 import { type JSX, Show } from "solid-js";
 import {
@@ -110,7 +110,7 @@ export default Plugin.define({
             try: (signal) =>
               rpc.generate(input, {
                 signal,
-                location: { directory: location.directory, workspace: location.workspaceID },
+                location: { directory: location.directory },
               }),
             catch: (error) =>
               new RecapGenerationError({

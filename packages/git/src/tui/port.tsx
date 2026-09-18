@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { Plugin } from "@opencode-ai/plugin/tui";
+import { Plugin } from "@opencode/plugin/tui";
 import type { GenerateText } from "../core/generate.ts";
 import type { GitUiPort, LoaderInput } from "../core/ui-port.ts";
 import { GitRpc } from "../rpc.ts";

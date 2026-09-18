@@ -1,10 +1,7 @@
 import { fileURLToPath } from "node:url";
-import { AbsolutePath } from "@opencode-ai/schema/schema";
-import { Skill } from "@opencode-ai/schema/skill";
+import { AbsolutePath } from "@opencode/schema/schema";
+import { Skill } from "@opencode/schema/skill";
 
-// OpenCode 2.0.4 renamed Skill.Info.location to path and dropped slash. The
-// published @opencode-ai/schema still types the old shape, so this literal is
-// cast to Skill.Info here; drop the cast once the dependency ships `path`.
 export const EXTERNAL_SUBAGENTS_SKILL = {
   id: Skill.ID.make("external-subagents"),
   name: Skill.Name.make("External Subagents"),
@@ -108,4 +105,4 @@ Use \`/subagents\` to open the read-only list, detail, and cumulative transcript
 
 External agents execute outside OpenCode's command permission system. Claude uses permission bypass, and Codex uses no approvals with danger-full workspace access. They can read and change files and run commands available to the OpenCode server process. Delegate only work appropriate for that trust level.
 `,
-} as unknown as Skill.Info;
+} satisfies Skill.Info;

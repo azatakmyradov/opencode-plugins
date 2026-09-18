@@ -1,4 +1,4 @@
-import { Plugin } from "@opencode-ai/plugin/tui";
+import { Plugin } from "@opencode/plugin/tui";
 import { Cause, Effect, Option, Semaphore } from "effect";
 import { z } from "zod";
 import { resolveServer, serverOption } from "./presentation.ts";

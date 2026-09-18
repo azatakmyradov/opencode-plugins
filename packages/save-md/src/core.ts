@@ -1,6 +1,6 @@
 import { realpath, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep, win32 } from "node:path";
-import type { SessionMessage } from "@opencode-ai/schema/session-message";
+import type { SessionMessage } from "@opencode/schema/session-message";
 import { DateTime, Effect, Schema } from "effect";
 
 export class NoAssistantResponseError extends Schema.TaggedError<NoAssistantResponseError>()(

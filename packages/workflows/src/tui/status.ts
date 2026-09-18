@@ -7,7 +7,7 @@
  * than in component state.
  */
 
-import type { Plugin } from "@opencode-ai/plugin/tui";
+import type { Plugin } from "@opencode/plugin/tui";
 import type { RunSummary } from "../rpc.ts";
 import { runningCount, sortRuns, upsertRun } from "./format.ts";
 

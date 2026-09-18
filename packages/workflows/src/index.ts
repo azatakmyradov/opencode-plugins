@@ -10,8 +10,8 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { Model, Plugin } from "@opencode-ai/plugin/effect";
-import type { Session } from "@opencode-ai/schema/session";
+import { Model, Plugin } from "@opencode/plugin/effect";
+import type { Session } from "@opencode/schema/session";
 import { Effect, Stream, type JsonSchema } from "effect";
 import { z } from "zod";
 import type { WorkflowAgentPort } from "./core/agent-port.ts";
@@ -345,7 +345,7 @@ export default Plugin.define({
         resolveNode,
         catalogSnapshot: () =>
           Effect.runPromise(
-            ctx.catalog.model.list().pipe(
+            ctx.model.list().pipe(
               Effect.map(({ data }) =>
                 data.map((model): CatalogModel => ({
                   id: model.id,

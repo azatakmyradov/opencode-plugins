@@ -1,4 +1,4 @@
-import type { SessionMessageInfo } from "@opencode-ai/client";
+import type { SessionMessageInfo } from "@opencode/client";
 import { Cause, Clock, Context, Effect, FiberMap, Layer, Ref, Scope } from "effect";
 import type { RecapGenerationError, ModelRef, RunRecap } from "./summarizer.ts";
 import { buildFallbackRecap, selectRunMessages, serializeRunTranscript } from "./transcript.ts";
