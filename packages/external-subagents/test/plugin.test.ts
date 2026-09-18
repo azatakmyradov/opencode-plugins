@@ -238,6 +238,9 @@ describe("subagent tool wrapper", () => {
           const wrapped = registered.value;
           expect(wrapped).toBeDefined();
           expect(skills.map((skill) => skill.id)).toEqual(["external-subagents"]);
+          expect(skills[0]).toHaveProperty("path");
+          expect(skills[0]).not.toHaveProperty("location");
+          expect(skills[0]).not.toHaveProperty("slash");
           expect(skills[0]?.content).toContain("Model precedence for a new external session");
           expect(skills[0]?.content).toContain("`fable`");
           expect(skills[0]?.content).toContain("`opus`");
